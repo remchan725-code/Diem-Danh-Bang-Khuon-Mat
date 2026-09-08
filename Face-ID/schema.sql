@@ -1,8 +1,12 @@
 DROP TABLE IF EXISTS LopHoc;
+DROP TABLE IF EXISTS LichSuDiemDanh;
+DROP TABLE IF EXISTS CaHoc;
+DROP TABLE IF EXISTS SinhVien;
+
 
 CREATE TABLE LopHoc (
     id SERIAL PRIMARY KEY,
-    ten_lop VARCHAR(255) NOT NULL,
+    ten_lop VARCHAR(25) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,6 +36,8 @@ create table LichSuDiemDanh(
     is_synced BOOLEAN DEFAULT FALSE
 );
 
-create INDEX idx_diemdanh_sinhvien On LichSuDiemDanh(sinh_vien_id)
-create INDEX idx_diemdanh_cahic On LichSuDiemDanh(ca_hoc_id)
-create index idx_sinhvien_masv On SinhVien(ma_sv)
+create INDEX idx_diemdanh_sinhvien On LichSuDiemDanh(sinh_vien_id);
+create INDEX idx_diemdanh_cahoc On LichSuDiemDanh(ca_hoc_id);
+create index idx_sinhvien_masv On SinhVien(ma_sv);
+
+
