@@ -1,6 +1,10 @@
 #tai psycopg2-binary truoc khi chay cu nhe
 import psycopg2
 import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+SCHEMA_PATH = BASE_DIR / "schema.sql"
 
 DB_CONFIG = {
     "host" : os.getenv("DB_HOST","localhost"),
@@ -9,20 +13,23 @@ DB_CONFIG = {
     "password":os.getenv("DB_PASSWORD","12341234"),#mk that la 12341234
     "port": os.getenv("DB_PORT","5432")
 }
-SCHEMA_PATH = r"C:\CloneGitHub\Diem-Danh-Bang-Khuon-Mat\Face-ID\schema.sql"
 
 def reset_and_create_schema(conn) -> None:
-    cur = conn.cursor()
-    cur.execute("""
-    DROP TABLE IF EXISTS LopHoc CASCADE;
-    DROP TABLE IF EXISTS LichSuDiemDanh CASCADE;
-    DROP TABLE IF EXISTS CaHoc CASCADE;
-    DROP TABLE IF EXISTS SinhVien CASCADE;
-""") #gửi lệnh "DROP..." lên SQL
-    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
-        cur.execute(f.read())
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                DROP TABLE IF EXISTS LopHoc CASCADE;
+                DROP TABLE IF EXISTS LichSuDiemDanh CASCADE;
+                DROP TABLE IF EXISTS CaHoc CASCADE;
+                DROP TABLE IF EXISTS SinhVien CASCADE;
+            """)
+
+            with open(SCHEMA_PATH, "r", encoding="utf-8") as file:
+                cur.execute(file.read())    
         conn.commit()
-        cur.close()
+    except Exception:
+        conn.rollback()
+        raise
 
 def seed_data(conn) -> None:
     cur = conn.cursor()
