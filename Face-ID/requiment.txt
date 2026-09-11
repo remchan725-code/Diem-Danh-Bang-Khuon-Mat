@@ -1,0 +1,4 @@
+python -m pip install cryptography       
+python -m pip install numpy\
+python -m pip install "fastapi[standard]
+python -m pip install pgvector psycopg2-binary

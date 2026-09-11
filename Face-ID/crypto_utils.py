@@ -9,7 +9,6 @@ def encrypt_vector(vector:list ,key: bytes) -> bytes:
     raw_bytes = arr.tobytes()
     return Fernet(key).encrypt(raw_bytes)
  
- 
 def decrypt_vector(encrypted: bytes, key: bytes) -> list:
     raw_bytes = Fernet(key).decrypt(bytes(encrypted))
     arr = np.frombuffer(raw_bytes, dtype=np.float32)
