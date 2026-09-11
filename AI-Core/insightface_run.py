@@ -104,6 +104,14 @@ async def process_frame(payload: FrameRequest):
     }
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    # Khởi chạy server tại port 8000
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    uvicorn.run(
+        "insightface_run:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        app_dir=current_dir
+    )
