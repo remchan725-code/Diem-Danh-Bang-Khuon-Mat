@@ -1,4 +1,7 @@
-python -m pip install cryptography       
-python -m pip install numpy\
-python -m pip install "fastapi[standard]
-python -m pip install pgvector psycopg2-binary
+#chạy lệnh này để cài toàn bộ thư viện bên dưới:
+#pip install -r requirements.txt
+cryptography       
+numpy
+fastapi[standard]
+pgvector
+psycopg2-binary
