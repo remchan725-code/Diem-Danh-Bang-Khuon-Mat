@@ -1,0 +1,19 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: attendance-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: attendance_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"    # cổng 5434 để tránh đụng Postgres native đang chạy ở 5433
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Mount schema vào thư mục init: Postgres image TỰ ĐỘNG chạy mọi file .sql
+      # trong /docker-entrypoint-initdb.d/ khi container khởi động lần đầu (volume rỗng).
+      - ./sql/schema_postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+volumes:
+  pgdata:
