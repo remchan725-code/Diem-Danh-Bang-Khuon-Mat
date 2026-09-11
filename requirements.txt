@@ -5,3 +5,10 @@ numpy
 fastapi[standard]
 pgvector
 psycopg2-binary
+
+uvicorn
+insightface
+opencv-python
+pydantic
+python-multipart
+onnxruntime-gpu
