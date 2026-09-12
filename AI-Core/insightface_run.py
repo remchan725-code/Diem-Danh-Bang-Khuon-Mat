@@ -41,8 +41,7 @@ def format_face_object(face) -> dict:
     }
 
 @app.post("/api/v1/register-face", summary="Trích xuất Vector từ ảnh thẻ 3x4")
-#async 
-def register_face(file: UploadFile = File(...)):
+async def register_face(file: UploadFile = File(...)):
     """
     Endpoint nhận file ảnh nhị phân (UploadFile) từ form đăng ký sinh viên.
     Tự động cắt mặt, căn chỉnh và trả về 1 Vector 512 chiều tốt nhất.

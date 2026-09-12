@@ -30,3 +30,4 @@ def process_frame(base64_image: str) -> list:
         }
         for i in range(so_mat)
     ]
+                
