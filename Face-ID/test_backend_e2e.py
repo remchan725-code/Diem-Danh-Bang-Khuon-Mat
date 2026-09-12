@@ -49,7 +49,7 @@ def chay_test():
  
     resp = client.post(
         "/api/v1/dang-ky-sinh-vien",
-        data={"ma_sv": "SV001", "ho_ten": "Nguyễn Văn A", "lop_id": lop_id},
+        data={"ma_sv": "SV001", "ho_ten": "Độ Mixi", "lop_id": lop_id},
         files={"anh": ("anh.jpg", b"noi-dung-anh-gia-lap", "image/jpeg")},
     )
     print("1) Đăng ký sinh viên:", resp.status_code, resp.json())

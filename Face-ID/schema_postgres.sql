@@ -1,4 +1,5 @@
-﻿CREATE EXTENSION IF NOT EXISTS vector;
+﻿-- Active: 1788838410938@@127.0.0.1@5433@postgres
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS LopHoc (
     id SERIAL PRIMARY KEY,
@@ -14,7 +15,7 @@ CREATE TABLE IF NOT EXISTS SinhVien (
     vector_khuon_mat BYTEA,
     vector_version TEXT,
     vector_updated_at TIMESTAMPTZ,
-    lop_id INT NOT NULL REFERENCES LopHoc(id),
+    lop_id INT NOT NULL REFERENCES LopHoc(id),--tham chiếu đến cột ID của LopHoc
     create_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -51,9 +52,13 @@ CREATE TABLE IF NOT EXISTS NhatKyXacThuc (
     device_id TEXT,
     request_id UUID NOT NULL UNIQUE,
     CONSTRAINT chk_ket_qua_xac_thuc CHECK (ket_qua IN ('chap_nhan', 'tu_choi', 'khong_xac_dinh')),
+
     CONSTRAINT chk_diem_khuon_mat CHECK (diem_khuon_mat IS NULL OR diem_khuon_mat BETWEEN 0 AND 1),
+
     CONSTRAINT chk_diem_song CHECK (diem_song IS NULL OR diem_song BETWEEN 0 AND 1),
+
     CONSTRAINT chk_chap_nhan_can_sinh_vien CHECK (ket_qua <> 'chap_nhan' OR sinh_vien_id IS NOT NULL),
+
     CONSTRAINT chk_ly_do_tu_choi CHECK (ket_qua <> 'tu_choi' OR ly_do_tu_choi IS NOT NULL)
 );
 
@@ -69,3 +74,4 @@ COMMENT ON COLUMN SinhVien.vector_khuon_mat IS
 COMMENT ON TABLE NhatKyXacThuc IS
     'Audit log of every AI and liveness verification attempt; retain under the approved data-retention policy.';
 CREATE INDEX IF NOT EXISTS idx_sinhvien_masv ON SinhVien(ma_sv);
+

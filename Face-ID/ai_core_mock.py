@@ -8,7 +8,6 @@ def _random_unit_vector(dim: int = 512) -> list:
     v = v / np.linalg.norm(v)
     return v.tolist()
  
- 
 def register_face(image_bytes: bytes) -> dict:
     """Mô phỏng POST /api/v1/register-face.
     Ảnh 3x4 đăng ký luôn có sẵn 1 khuôn mặt rõ, nên luôn trả về confidence cao."""
@@ -17,7 +16,6 @@ def register_face(image_bytes: bytes) -> dict:
         "confidence": round(random.uniform(0.95, 0.999), 3),
         "bbox": [50, 40, 210, 230],
     }
- 
  
 def process_frame(base64_image: str) -> list:
     """Mô phỏng POST /api/v1/process-frame.
