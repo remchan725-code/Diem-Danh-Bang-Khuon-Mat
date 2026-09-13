@@ -30,3 +30,33 @@ NOTE
 
 Face-ID/db.py
 ). Nếu bạn dùng thông tin tài khoản khác, hãy cập nhật lại file này hoặc đặt biến môi trường tương ứng.
+
+
+
+
+Hướng dẫn sử dụng & Chuyển đổi môi trường
+Cách bật/tắt chế độ Development:
+Cách 1 (Sửa trực tiếp trong code): Trong 
+
+Face-ID/main_window.py
+:
+
+Chế độ dev: DEBUG = True
+Chế độ sản phẩm cuối: DEBUG = False
+Cách 2 (Thông qua biến môi trường trong terminal, không cần sửa code):
+
+Chạy thử giao diện sản phẩm cuối (ẩn chọn camera):
+powershell
+$env:APP_DEBUG="false"; .\.venv\Scripts\python.exe .\Face-ID\main_window.py
+Chạy ở môi trường development (hiện chọn camera):
+powershell
+$env:APP_DEBUG="true"; .\.venv\Scripts\python.exe .\Face-ID\main_window.py
+Test nhanh tính năng chọn camera độc lập:
+Chạy file 
+
+Face-ID/camera_worker.py
+:
+
+powershell
+.\.venv\Scripts\python.exe .\Face-ID\camera_worker.py
+(Sẽ có thanh dropdown phía trên để chuyển đổi qua lại giữa các camera ngay lập tức).
