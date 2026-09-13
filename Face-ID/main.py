@@ -111,6 +111,7 @@ def diem_danh(payload: DiemDanhRequest):
         conn.close()
  
     return {"so_mat_thay": len(faces), "ket_qua": ket_qua}
+@app.get("/api/v1/lop-hoc")
 def danh_sach_lop_hoc():
     """Cho UI đổ vào dropdown chọn lớp ở màn hình 'Bắt đầu ca'."""
     conn = get_connection()
@@ -165,3 +166,8 @@ def ket_qua_diem_danh(ca_hoc_id: int):
         return {"ca_hoc_id": ca_hoc_id, "so_luong": len(danh_sach), "danh_sach": danh_sach}
     finally:
         conn.close()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

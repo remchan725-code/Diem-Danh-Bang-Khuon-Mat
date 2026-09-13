@@ -2,6 +2,7 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout,
     QLabel, QPushButton, QComboBox, QTableWidget, QTableWidgetItem,
+    QMessageBox,
 )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
@@ -28,22 +29,38 @@ class ManHinhBatDauCa(QWidget):
         nut_bat_dau.clicked.connect(self.bat_dau)
         layout.addWidget(nut_bat_dau)
  
+        nut_tai_lai = QPushButton("Tải lại danh sách (Thử kết nối lại)")
+        nut_tai_lai.clicked.connect(self.tai_danh_sach_lop)
+        layout.addWidget(nut_tai_lai)
+ 
         self.combo_lop.currentIndexChanged.connect(self.doi_lop)
  
     def tai_danh_sach_lop(self):
-        danh_sach = api_client.lay_danh_sach_lop()
-        self.combo_lop.clear()
-        for lop in danh_sach:
-            self.combo_lop.addItem(lop["ten_lop"], lop["id"])
+        try:
+            danh_sach = api_client.lay_danh_sach_lop()
+            self.combo_lop.clear()
+            for lop in danh_sach:
+                self.combo_lop.addItem(lop["ten_lop"], lop["id"])
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Lỗi kết nối Backend API",
+                f"Không thể kết nối đến Backend API ({api_client.BASE_URL}).\n\n"
+                f"Chi tiết lỗi: {e}\n\n"
+                "Vui lòng đảm bảo Backend API đã được khởi động trước (uvicorn main:app --reload) rồi bấm 'Tải lại danh sách'.",
+            )
  
     def doi_lop(self):
         lop_id = self.combo_lop.currentData()
         if lop_id is None:
             return
-        danh_sach_ca = api_client.lay_danh_sach_ca(lop_id)
-        self.combo_ca.clear()
-        for ca in danh_sach_ca:
-            self.combo_ca.addItem(f"{ca['ngay']} - {ca['gio_bat_dau']}", ca["id"])
+        try:
+            danh_sach_ca = api_client.lay_danh_sach_ca(lop_id)
+            self.combo_ca.clear()
+            for ca in danh_sach_ca:
+                self.combo_ca.addItem(f"{ca['ngay']} - {ca['gio_bat_dau']}", ca["id"])
+        except Exception as e:
+            QMessageBox.warning(self, "Lỗi kết nối", f"Không thể lấy danh sách ca học: {e}")
  
     def bat_dau(self):
         ca_hoc_id = self.combo_ca.currentData()
@@ -119,15 +136,19 @@ class ManHinhTongKet(QWidget):
         layout.addWidget(nut_quay_lai)
  
     def vao_man_hinh(self, ca_hoc_id: int):
-        du_lieu = api_client.lay_ket_qua_diem_danh(ca_hoc_id)
-        self.nhan_tieu_de.setText(
-            f"Ca học #{ca_hoc_id} — {du_lieu['so_luong']} sinh viên đã điểm danh"
-        )
-        self.bang.setRowCount(len(du_lieu["danh_sach"]))
-        for hang, sv in enumerate(du_lieu["danh_sach"]):
-            self.bang.setItem(hang, 0, QTableWidgetItem(sv["ma_sv"]))
-            self.bang.setItem(hang, 1, QTableWidgetItem(sv["ho_ten"]))
-            self.bang.setItem(hang, 2, QTableWidgetItem(sv["trang_thai"]))
+        try:
+            du_lieu = api_client.lay_ket_qua_diem_danh(ca_hoc_id)
+            self.nhan_tieu_de.setText(
+                f"Ca học #{ca_hoc_id} — {du_lieu['so_luong']} sinh viên đã điểm danh"
+            )
+            self.bang.setRowCount(len(du_lieu["danh_sach"]))
+            for hang, sv in enumerate(du_lieu["danh_sach"]):
+                self.bang.setItem(hang, 0, QTableWidgetItem(sv["ma_sv"]))
+                self.bang.setItem(hang, 1, QTableWidgetItem(sv["ho_ten"]))
+                self.bang.setItem(hang, 2, QTableWidgetItem(sv["trang_thai"]))
+        except Exception as e:
+            QMessageBox.warning(self, "Lỗi API", f"Không thể tải kết quả điểm danh: {e}")
+
  
  
 class CuaSoChinh(QMainWindow):

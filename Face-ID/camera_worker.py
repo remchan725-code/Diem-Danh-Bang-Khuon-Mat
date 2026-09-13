@@ -50,3 +50,35 @@ class CameraWorker(QThread):
                 self.msleep(30)  # ~30fps hiển thị — KHÔNG phải tốc độ gọi API
         finally:
             cap.release()
+
+
+if __name__ == "__main__":
+    import sys
+    from PyQt6.QtWidgets import QApplication, QLabel
+    from PyQt6.QtGui import QPixmap
+
+    print("Đang chạy thử nghiệm CameraWorker... (Bấm đóng cửa sổ để thoát)")
+    app = QApplication(sys.argv)
+    label = QLabel("Đang mở webcam...")
+    label.setWindowTitle("Test Camera Worker Feed")
+    label.resize(640, 480)
+    label.show()
+
+    def mock_api(ca_hoc_id, frame_b64):
+        return {"ket_qua": []}
+
+    worker = CameraWorker(ca_hoc_id=1, goi_api_diem_danh=mock_api)
+
+    def on_frame(jpeg_bytes):
+        pixmap = QPixmap()
+        pixmap.loadFromData(jpeg_bytes)
+        label.setPixmap(pixmap)
+
+    worker.khung_hinh_moi.connect(on_frame)
+    worker.loi.connect(lambda msg: print(f"Lỗi: {msg}"))
+    worker.start()
+
+    ret = app.exec()
+    worker.dung_lai()
+    worker.wait()
+    sys.exit(ret)
