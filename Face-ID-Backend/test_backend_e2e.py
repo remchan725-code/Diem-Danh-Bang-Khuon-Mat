@@ -5,7 +5,7 @@ import numpy as np
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
  
-sys.path.insert(0, "backend")
+sys.path.insert(0, os.path.dirname(__file__))
 from fastapi.testclient import TestClient
  
 import main
