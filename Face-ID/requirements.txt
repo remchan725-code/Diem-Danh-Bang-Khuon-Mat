@@ -12,3 +12,4 @@ opencv-python
 pydantic
 python-multipart
 onnxruntime-gpu
+PyQt6
