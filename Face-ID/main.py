@@ -111,4 +111,57 @@ def diem_danh(payload: DiemDanhRequest):
         conn.close()
  
     return {"so_mat_thay": len(faces), "ket_qua": ket_qua}
- 
+def danh_sach_lop_hoc():
+    """Cho UI đổ vào dropdown chọn lớp ở màn hình 'Bắt đầu ca'."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, ten_lop FROM LopHoc ORDER BY ten_lop")
+        return [{"id": r[0], "ten_lop": r[1]} for r in cur.fetchall()]
+    finally:
+        conn.close()
+@app.get("/api/v1/ca-hoc")
+def danh_sach_ca_hoc(lop_id: int):
+    """Cho UI đổ vào dropdown chọn ca học, sau khi đã chọn lớp ở trên."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, ngay, gio_bat_dau, gio_ket_thuc
+            FROM CaHoc WHERE lop_id = %s
+            ORDER BY ngay DESC, gio_bat_dau DESC
+            """,
+            (lop_id,),
+        )
+        return [
+            {"id": r[0], "ngay": str(r[1]), "gio_bat_dau": str(r[2]),
+             "gio_ket_thuc": str(r[3]) if r[3] else None}
+            for r in cur.fetchall()
+        ]
+    finally:
+        conn.close()
+@app.get("/api/v1/diem-danh/{ca_hoc_id}")
+def ket_qua_diem_danh(ca_hoc_id: int):
+    """Cho màn hình 'Tổng kết' — danh sách đã điểm danh trong 1 ca cụ thể."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT SinhVien.ma_sv, SinhVien.ho_ten, LichSuDiemDanh.trang_thai,
+                   LichSuDiemDanh.thoi_gian
+            FROM LichSuDiemDanh
+            JOIN SinhVien ON LichSuDiemDanh.sinh_vien_id = SinhVien.id
+            WHERE LichSuDiemDanh.ca_hoc_id = %s
+            ORDER BY LichSuDiemDanh.thoi_gian
+            """,
+            (ca_hoc_id,),
+        )
+        danh_sach = [
+            {"ma_sv": r[0], "ho_ten": r[1], "trang_thai": r[2], "thoi_gian": str(r[3])}
+            for r in cur.fetchall()
+        ]
+        return {"ca_hoc_id": ca_hoc_id, "so_luong": len(danh_sach), "danh_sach": danh_sach}
+    finally:
+        conn.close()
