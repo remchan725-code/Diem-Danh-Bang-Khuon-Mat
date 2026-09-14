@@ -8,7 +8,7 @@ psycopg2-binary
 
 uvicorn
 insightface
-opencv-python
+opencv-python-headless
 pydantic
 python-multipart
 onnxruntime-gpu
