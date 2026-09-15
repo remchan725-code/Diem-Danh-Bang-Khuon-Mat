@@ -88,7 +88,9 @@ def diem_danh(payload: DiemDanhRequest):
             if row is None or row[2] > NGUONG_KHOP:
                 ket_qua.append({
                     "nhan_dien": False,
-                    "khoang_cach": round(row[2], 4) if row else None,
+                    "ket_qua": ket_qua_xac_thuc,
+                    "khoang_cach": round(row[2], 4) if row and khoang_cach else None,
+                    "bbox": face["bbox"],   
                 })
                 continue
  
@@ -105,6 +107,7 @@ def diem_danh(payload: DiemDanhRequest):
                 "sinh_vien_id": sinh_vien_id,
                 "ho_ten": ho_ten,
                 "khoang_cach": round(khoang_cach, 4),
+                "bbox": face["bbox"],
             })
         conn.commit()
     finally:

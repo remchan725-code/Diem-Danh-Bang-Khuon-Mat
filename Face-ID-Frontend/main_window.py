@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QLabel, QPushButton, QComboBox, QTableWidget, QTableWidgetItem,
     QMessageBox, QGroupBox, QCheckBox,
 )
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QFont
 from PyQt6.QtCore import Qt
 
 import api_client
@@ -234,6 +234,7 @@ class ManHinhDiemDanhLive(QWidget):
         self.ca_hoc_id = None
         self.camera_id = 0
         self.test_mode = False
+        self.cac_khuon_mat_hien_tai = []
 
         layout = QVBoxLayout(self)
 
@@ -272,8 +273,30 @@ class ManHinhDiemDanhLive(QWidget):
         self.worker.start()
 
     def cap_nhat_khung_hinh(self, jpeg_bytes: bytes):
-        pixmap = QPixmap()
-        pixmap.loadFromData(jpeg_bytes)
+        image = QImage()
+        image.loadFromData(jpeg_bytes)
+
+        painter = QPainter(image)
+        but_xanh = QPen(QColor("#2f9e44"), 3)   # nhận diện thành công (chap_nhan)
+        but_do = QPen(QColor("#e03131"), 3)     # từ chối hoặc không xác định
+        phong_chu = QFont()
+        phong_chu.setPointSize(14)
+        painter.setFont(phong_chu)
+
+        for mat in self.cac_khuon_mat_hien_tai:
+            bbox = mat.get("bbox")
+            if not bbox:
+                continue
+            x1, y1, x2, y2 = bbox
+            dat_yeu_cau = mat.get("nhan_dien", False)
+            painter.setPen(but_xanh if dat_yeu_cau else but_do)
+            painter.drawRect(x1, y1, x2 - x1, y2 - y1)
+            nhan = mat["ho_ten"] if dat_yeu_cau else "Không xác định"
+            painter.drawText(x1, max(y1 - 8, 14), nhan)
+
+        painter.end()
+
+        pixmap = QPixmap.fromImage(image)
         self.nhan_camera.setPixmap(
             pixmap.scaled(640, 360, Qt.AspectRatioMode.KeepAspectRatio)
         )
