@@ -1,4 +1,5 @@
 import os
+import uuid
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
@@ -20,11 +21,19 @@ FERNET_KEY = os.getenv("FERNET_KEY", crypto_utils.generate_key())
 # Ngưỡng 0.4 là điểm khởi đầu hợp lý cho embedding ArcFace — CẦN tinh chỉnh lại
 # bằng thực nghiệm ở Giai đoạn 5 (kiểm thử) với dữ liệu khuôn mặt thật.
 NGUONG_KHOP = 0.4
- 
- 
+MODEL_VERSION = "ai_core_mock_v1"
+
+ANH_XA_KET_QUA = {
+    "thanh_cong": "chap_nhan",
+    "da_diem_danh_roi": "chap_nhan",         # vẫn là nhận diện đúng, chỉ là ghi trùng
+    "khong_du_giong": "tu_choi",
+    "khong_tim_thay_ung_vien": "khong_xac_dinh",
+    "loi_tham_chieu_db": "khong_xac_dinh",   # lỗi hệ thống, không tính là 1 quyết định nhận diện thật
+}
 class DiemDanhRequest(BaseModel):
     ca_hoc_id: int
     frame_base64: str
+    device_id : str | None = None
  
 @app.post("/api/v1/dang-ky-sinh-vien")
 async def dang_ky_sinh_vien(
@@ -62,10 +71,21 @@ async def dang_ky_sinh_vien(
  
     return {"id": sinh_vien_id, "ma_sv": ma_sv, "confidence": ket_qua["confidence"]}
  
- 
+def ghi_audit_log(cur, ca_hoc_id, sinh_vien_id, ket_qua_goc, khoang_cach, ly_do=None):
+    ket_qua_chuan = ANH_XA_KET_QUA[ket_qua_goc]
+    diem = round(1 - khoang_cach / 2, 4) if khoang_cach is not None else None
+    cur.execute(
+        """
+        INSERT INTO NhatKyXacThuc
+            (ca_hoc_id, sinh_vien_id, ket_qua, ly_do_tu_choi,
+             diem_khuon_mat, model_version, request_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+        (ca_hoc_id, sinh_vien_id, ket_qua_chuan, ly_do,
+         diem, MODEL_VERSION, str(uuid.uuid4())),
+    )
 @app.post("/api/v1/diem-danh")
 def diem_danh(payload: DiemDanhRequest):
-    faces = ai_core_mock.process_frame(payload.frame_base64)
     ket_qua = []
     try:
         faces = ai_core_mock.process_frame(payload.frame_base64)
@@ -112,7 +132,8 @@ def diem_danh(payload: DiemDanhRequest):
             """,
             (all_vectors,),
         )
-        Trả về sớm, tránh query DB vô ích khi không có khuôn mặt nàos = cur.fetchall()
+        #Trả về sớm, tránh query DB vô ích khi không có khuôn mặt nàos
+        rows = cur.fetchall()
         # rows: [(face_idx, sinh_vien_id, ho_ten, khoang_cach), ...]
 
         # Map kết quả theo thứ tự face
@@ -124,6 +145,7 @@ def diem_danh(payload: DiemDanhRequest):
 
             if match is None:
                 # Không tìm thấy ứng viên nào (DB rỗng hoặc lỗi)
+                ghi_audit_log(cur, payload.ca_hoc_id, None, "khong_tim_thay_ung_vien", None)
                 ket_qua.append({
                     "nhan_dien": False,
                     "ket_qua": "khong_tim_thay_ung_vien",
@@ -136,6 +158,7 @@ def diem_danh(payload: DiemDanhRequest):
 
             if khoang_cach > NGUONG_KHOP:
                 # Có ứng viên nhưng không đủ giống
+                ghi_audit_log(cur, payload.ca_hoc_id, None, "khong_tim_thay_ung_vien", None)
                 ket_qua.append({
                     "nhan_dien": False,
                     "ket_qua": "khong_du_giong",
@@ -145,6 +168,7 @@ def diem_danh(payload: DiemDanhRequest):
                 continue
 
             # --- Nhận diện thành công → ghi vào LichSuDiemDanh ---
+            cur.execute("SAVEPOINT sp_diem_danh") 
             try:
                 cur.execute(
                     """
@@ -155,6 +179,8 @@ def diem_danh(payload: DiemDanhRequest):
                     (sinh_vien_id, payload.ca_hoc_id),
                 )
             except pg_errors.ForeignKeyViolation:
+                ghi_audit_log(cur, payload.ca_hoc_id, None, "khong_tim_thay_ung_vien", None)
+                cur.execute("ROLLBACK TO SAVEPOINT sp_diem_danh")   # chỉ hủy việc insert vừa lỗi
                 # sinh_vien_id hoặc ca_hoc_id không tồn tại
                 ket_qua.append({
                     "nhan_dien": False,
@@ -166,6 +192,8 @@ def diem_danh(payload: DiemDanhRequest):
                 continue
             except pg_errors.UniqueViolation:
                 # Đã điểm danh rồi (nếu có unique constraint)
+                ghi_audit_log(cur, payload.ca_hoc_id, None, "khong_tim_thay_ung_vien", None)
+                cur.execute("ROLLBACK TO SAVEPOINT sp_diem_danh")
                 ket_qua.append({
                     "nhan_dien": True,
                     "ket_qua": "da_diem_danh_roi",
@@ -262,7 +290,6 @@ def ket_qua_diem_danh(ca_hoc_id: int):
         return {"ca_hoc_id": ca_hoc_id, "so_luong": len(danh_sach), "danh_sach": danh_sach}
     finally:
         conn.close()
-
 
 if __name__ == "__main__":
     import uvicorn
