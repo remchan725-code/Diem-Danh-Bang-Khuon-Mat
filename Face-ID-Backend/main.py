@@ -2,6 +2,9 @@ import os
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
+import psycopg2
+from psycopg2 import errors as pg_errors
+#Cần import thư viện psycopg2 và module errors để phân loại lỗi PostgreSQL cụ thể
  
 import ai_core_mock
 import crypto_utils
@@ -22,7 +25,6 @@ NGUONG_KHOP = 0.4
 class DiemDanhRequest(BaseModel):
     ca_hoc_id: int
     frame_base64: str
- 
  
 @app.post("/api/v1/dang-ky-sinh-vien")
 async def dang_ky_sinh_vien(
@@ -64,55 +66,146 @@ async def dang_ky_sinh_vien(
 @app.post("/api/v1/diem-danh")
 def diem_danh(payload: DiemDanhRequest):
     faces = ai_core_mock.process_frame(payload.frame_base64)
- 
     ket_qua = []
+    try:
+        faces = ai_core_mock.process_frame(payload.frame_base64)
+    except ValueError as e:
+        # AI trả về lỗi dữ liệu ảnh (base64 hỏng, format sai)
+        raise HTTPException(status_code=400, detail=f"Ảnh không hợp lệ: {e}")
+    except RuntimeError as e:
+        # AI model chưa load, GPU lỗi, timeout...
+        raise HTTPException(status_code=503, detail=f"AI service lỗi: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi không xác định từ AI: {e}")
+    if not faces:
+        return {"so_mat_thay": 0, "ket_qua": []}
     conn = get_connection()
     try:
         cur = conn.cursor()
-        for face in faces:
-            vector = face["vector"]
- 
-            # Toán tử <=> của pgvector: tính cosine distance ngay trong SQL,
-            # không cần kéo hết vector về Python rồi tính vòng lặp for.
-            cur.execute(
-                """
-                SELECT id, ho_ten, vector_tho <=> %s AS khoang_cach
-                FROM SinhVien
-                ORDER BY khoang_cach ASC
-                LIMIT 1
-                """,
-                (np.array(vector),),
+
+        # Thu thập tất cả vector của các khuôn mặt
+        all_vectors = [np.array(face["vector"], dtype=np.float32) for face in faces]
+
+        # --- Batch query: tìm top-1 match cho TẤT CẢ faces trong 1 lệnh SQL ---
+        # Sử dụng UNNEST + LATERAL để tránh N+1 query
+        cur.execute(
+            """
+            WITH face_vecs AS (
+                SELECT
+                    idx AS face_idx,
+                    vec
+                FROM unnest(%s::vector[]) WITH ORDINALITY AS t(vec, idx)
             )
-            row = cur.fetchone()
- 
-            if row is None or row[2] > NGUONG_KHOP:
+            SELECT
+                fv.face_idx,
+                sv.id,
+                sv.ho_ten,
+                fv.vec <=> sv.vector_tho AS khoang_cach
+            FROM face_vecs fv
+            CROSS JOIN LATERAL (
+                SELECT id, ho_ten, vector_tho
+                FROM SinhVien
+                ORDER BY vector_tho <=> fv.vec
+                LIMIT 1
+            ) sv
+            ORDER BY fv.face_idx
+            """,
+            (all_vectors,),
+        )
+        Trả về sớm, tránh query DB vô ích khi không có khuôn mặt nàos = cur.fetchall()
+        # rows: [(face_idx, sinh_vien_id, ho_ten, khoang_cach), ...]
+
+        # Map kết quả theo thứ tự face
+        match_map = {r[0]: (r[1], r[2], r[3]) for r in rows}
+
+        # ---------- Bước 3: Xử lý từng khuôn mặt ----------
+        for idx, face in enumerate(faces):
+            match = match_map.get(idx + 1)  # WITH ORDINALITY bắt đầu từ 1
+
+            if match is None:
+                # Không tìm thấy ứng viên nào (DB rỗng hoặc lỗi)
                 ket_qua.append({
                     "nhan_dien": False,
-                    "ket_qua": ket_qua_xac_thuc,
-                    "khoang_cach": round(row[2], 4) if row and khoang_cach else None,
-                    "bbox": face["bbox"],   
+                    "ket_qua": "khong_tim_thay_ung_vien",
+                    "khoang_cach": None,
+                    "bbox": face["bbox"],
                 })
                 continue
- 
-            sinh_vien_id, ho_ten, khoang_cach = row
-            cur.execute(
-                """
-                INSERT INTO LichSuDiemDanh (sinh_vien_id, ca_hoc_id, trang_thai, is_synced)
-                VALUES (%s, %s, 'co_mat', FALSE)
-                """,
-                (sinh_vien_id, payload.ca_hoc_id),
-            )
+
+            sinh_vien_id, ho_ten, khoang_cach = match
+
+            if khoang_cach > NGUONG_KHOP:
+                # Có ứng viên nhưng không đủ giống
+                ket_qua.append({
+                    "nhan_dien": False,
+                    "ket_qua": "khong_du_giong",
+                    "khoang_cach": round(float(khoang_cach), 4),
+                    "bbox": face["bbox"],
+                })
+                continue
+
+            # --- Nhận diện thành công → ghi vào LichSuDiemDanh ---
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO LichSuDiemDanh
+                        (sinh_vien_id, ca_hoc_id, trang_thai, is_synced)
+                    VALUES (%s, %s, 'co_mat', FALSE)
+                    """,
+                    (sinh_vien_id, payload.ca_hoc_id),
+                )
+            except pg_errors.ForeignKeyViolation:
+                # sinh_vien_id hoặc ca_hoc_id không tồn tại
+                ket_qua.append({
+                    "nhan_dien": False,
+                    "ket_qua": "loi_tham_chieu_db",
+                    "khoang_cach": round(float(khoang_cach), 4),
+                    "bbox": face["bbox"],
+                    "loi": f"sinh_vien_id={sinh_vien_id} hoac ca_hoc_id={payload.ca_hoc_id} khong hop le",
+                })
+                continue
+            except pg_errors.UniqueViolation:
+                # Đã điểm danh rồi (nếu có unique constraint)
+                ket_qua.append({
+                    "nhan_dien": True,
+                    "ket_qua": "da_diem_danh_roi",
+                    "sinh_vien_id": sinh_vien_id,
+                    "ho_ten": ho_ten,
+                    "khoang_cach": round(float(khoang_cach), 4),
+                    "bbox": face["bbox"],
+                })
+                continue
+
             ket_qua.append({
                 "nhan_dien": True,
+                "ket_qua": "thanh_cong",
                 "sinh_vien_id": sinh_vien_id,
                 "ho_ten": ho_ten,
-                "khoang_cach": round(khoang_cach, 4),
+                "khoang_cach": round(float(khoang_cach), 4),
                 "bbox": face["bbox"],
             })
+
         conn.commit()
+
+    except pg_errors.OperationalError as e:
+        # Mất kết nối DB, timeout, server down
+        conn.rollback()
+        raise HTTPException(status_code=503, detail=f"Database khong san sang: {e}")
+    except pg_errors.IntegrityError as e:
+        # Mất kết nối DB, timeout, server down
+        conn.rollback()
+        raise HTTPException(status_code=503, detail=f"Database khong san sang: {e}")
+    except pg_errors.IntegrityError as e:
+        # Vi phạm constraint (NOT NULL, CHECK, ...)
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Loi du lieu: {e}")
+    except psycopg2.Error as e:
+        # Lỗi PostgreSQL chung
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Loi database: {e}")
     finally:
         conn.close()
- 
+
     return {"so_mat_thay": len(faces), "ket_qua": ket_qua}
 @app.get("/api/v1/lop-hoc")
 def danh_sach_lop_hoc():
