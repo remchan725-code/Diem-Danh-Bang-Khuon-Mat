@@ -158,7 +158,7 @@ def diem_danh(payload: DiemDanhRequest):
 
             if khoang_cach > NGUONG_KHOP:
                 # Có ứng viên nhưng không đủ giống
-                ghi_audit_log(cur, payload.ca_hoc_id, None, "khong_tim_thay_ung_vien", None)
+                ghi_audit_log(cur, payload.ca_hoc_id, sinh_vien_id, "khong_du_giong", khoang_cach)
                 ket_qua.append({
                     "nhan_dien": False,
                     "ket_qua": "khong_du_giong",
@@ -179,8 +179,8 @@ def diem_danh(payload: DiemDanhRequest):
                     (sinh_vien_id, payload.ca_hoc_id),
                 )
             except pg_errors.ForeignKeyViolation:
-                ghi_audit_log(cur, payload.ca_hoc_id, None, "khong_tim_thay_ung_vien", None)
                 cur.execute("ROLLBACK TO SAVEPOINT sp_diem_danh")   # chỉ hủy việc insert vừa lỗi
+                ghi_audit_log(cur, payload.ca_hoc_id, None, "loi_tham_chieu_db", None)
                 # sinh_vien_id hoặc ca_hoc_id không tồn tại
                 ket_qua.append({
                     "nhan_dien": False,
@@ -192,8 +192,8 @@ def diem_danh(payload: DiemDanhRequest):
                 continue
             except pg_errors.UniqueViolation:
                 # Đã điểm danh rồi (nếu có unique constraint)
-                ghi_audit_log(cur, payload.ca_hoc_id, None, "khong_tim_thay_ung_vien", None)
                 cur.execute("ROLLBACK TO SAVEPOINT sp_diem_danh")
+                ghi_audit_log(cur, payload.ca_hoc_id, None, "da_diem_danh_roi", None)
                 ket_qua.append({
                     "nhan_dien": True,
                     "ket_qua": "da_diem_danh_roi",
@@ -203,7 +203,7 @@ def diem_danh(payload: DiemDanhRequest):
                     "bbox": face["bbox"],
                 })
                 continue
-
+            ghi_audit_log(cur, payload.ca_hoc_id, sinh_vien_id, "thanh_cong", khoang_cach)
             ket_qua.append({
                 "nhan_dien": True,
                 "ket_qua": "thanh_cong",
