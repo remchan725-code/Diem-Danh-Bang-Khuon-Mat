@@ -80,6 +80,39 @@ class CameraWorker(QThread):
             cap.release()
 
 
+class FaceCaptureWorker(QThread):
+    """Phát hình webcam liên tục để màn hình đăng ký lấy một frame hiện tại."""
+
+    khung_hinh_moi = pyqtSignal(bytes)
+    loi = pyqtSignal(str)
+
+    def __init__(self, camera_id: int = 0):
+        super().__init__()
+        self.camera_id = camera_id
+        self._dang_chay = True
+
+    def dung_lai(self):
+        self._dang_chay = False
+
+    def run(self):
+        cap = cv2.VideoCapture(self.camera_id)
+        if not cap.isOpened():
+            self.loi.emit(f"Không mở được webcam (Camera ID: {self.camera_id})")
+            return
+        try:
+            while self._dang_chay:
+                ok, frame = cap.read()
+                if not ok:
+                    self.loi.emit("Mất tín hiệu webcam")
+                    break
+                ok_encode, buffer = cv2.imencode(".jpg", frame)
+                if ok_encode:
+                    self.khung_hinh_moi.emit(buffer.tobytes())
+                self.msleep(30)
+        finally:
+            cap.release()
+
+
 if __name__ == "__main__":
     import sys
     from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QComboBox

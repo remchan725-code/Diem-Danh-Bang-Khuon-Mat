@@ -33,7 +33,19 @@ Cửa sổ webcam sẽ hiện lên với dropdown chọn camera. Hoạt động 
 
 ## Cách 2: Chạy đầy đủ hệ thống (Giao diện + Backend)
 
-Hệ thống theo kiến trúc Client–Server, cần mở **2 terminal**:
+Hệ thống theo kiến trúc Client–Server, cần mở **3 terminal** khi dùng InsightFace thật:
+
+### Terminal 0 — Khởi động AI Core thật
+
+AI Core dùng InsightFace để đổi ảnh thành vector 512 chiều:
+
+```powershell
+cd AI-Core
+..\.venv\Scripts\python.exe insightface_run.py
+```
+
+AI Core mặc định chạy tại `http://127.0.0.1:8001`. Backend dùng biến môi trường
+`AI_CORE_BASE_URL` để gọi địa chỉ này.
 
 ### Terminal 1 — Khởi động Backend API
 
@@ -62,6 +74,14 @@ Hoặc từ thư mục gốc:
 ```
 
 > **Lưu ý:** Backend cần kết nối tới PostgreSQL (port `5433`, user `postgres`, password `12345` theo cấu hình trong `Face-ID-Backend/db.py`).
+
+### Đăng ký khuôn mặt mới
+
+Trong giao diện, bấm **Đăng ký khuôn mặt mới**, nhập mã sinh viên, họ tên và lớp.
+Bạn có thể chọn **Thêm ảnh từ máy tính** hoặc bật camera. Khi camera đang chạy,
+frame hiện tại được dùng làm ảnh đăng ký khi bấm **Lưu vector và đăng ký**.
+Ảnh nên chỉ có một khuôn mặt, chính diện và đủ sáng. Backend sẽ gọi AI Core,
+lưu vector 512 chiều vào bảng `SinhVien`, sau đó dùng vector này để so khớp khi điểm danh.
 
 ---
 

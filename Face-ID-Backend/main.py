@@ -7,7 +7,7 @@ import psycopg2
 from psycopg2 import errors as pg_errors
 #Cần import thư viện psycopg2 và module errors để phân loại lỗi PostgreSQL cụ thể
  
-import ai_core_mock
+import ai_core_client as ai_core_mock
 import crypto_utils
 from db import get_connection
  
@@ -21,7 +21,7 @@ FERNET_KEY = os.getenv("FERNET_KEY", crypto_utils.generate_key())
 # Ngưỡng 0.4 là điểm khởi đầu hợp lý cho embedding ArcFace — CẦN tinh chỉnh lại
 # bằng thực nghiệm ở Giai đoạn 5 (kiểm thử) với dữ liệu khuôn mặt thật.
 NGUONG_KHOP = 0.4
-MODEL_VERSION = "ai_core_mock_v1"
+MODEL_VERSION = "insightface_buffalo_l_v1"
 
 ANH_XA_KET_QUA = {
     "thanh_cong": "chap_nhan",

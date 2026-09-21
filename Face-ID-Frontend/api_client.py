@@ -1,6 +1,17 @@
 import requests
  
 BASE_URL = "http://localhost:8000"
+
+
+def dang_ky_sinh_vien(ma_sv: str, ho_ten: str, lop_id: int, image_bytes: bytes) -> dict:
+    response = requests.post(
+        f"{BASE_URL}/api/v1/dang-ky-sinh-vien",
+        data={"ma_sv": ma_sv, "ho_ten": ho_ten, "lop_id": lop_id},
+        files={"anh": ("face.jpg", image_bytes, "image/jpeg")},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
  
  
 def lay_danh_sach_lop() -> list:
