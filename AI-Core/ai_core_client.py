@@ -1,6 +1,6 @@
 import httpx
  
-AI_CORE_BASE_URL = "http://localhost:8000"  # đổi theo địa chỉ thật khi A deploy
+AI_CORE_BASE_URL = "http://localhost:8001"  # đổi theo địa chỉ thật khi A deploy
  
  
 def register_face(image_bytes: bytes) -> dict:
