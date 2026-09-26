@@ -281,7 +281,7 @@ class ManHinhDangKy(QWidget):
 
     def vao_man_hinh(self):
         self.tai_danh_sach_lop()
-        self.bat_camera()
+        self.nhan_trang_thai.setText("Chọn ảnh tải lên hoặc bật camera để lấy ảnh trực tiếp.")
 
     def tai_danh_sach_lop(self):
         try:
@@ -338,8 +338,10 @@ class ManHinhDangKy(QWidget):
             return
         try:
             with open(duong_dan, "rb") as tep:
-                self.cap_nhat_frame(tep.read())
-            self.nhan_trang_thai.setText("Đã chọn ảnh. Hãy kiểm tra ảnh chỉ có một khuôn mặt.")
+                image_bytes = tep.read()
+            self.dung_camera()
+            self.cap_nhat_frame(image_bytes)
+            self.nhan_trang_thai.setText("Đã tải ảnh. Kiểm tra ảnh trước khi lưu đăng ký.")
         except OSError as e:
             self.nhan_trang_thai.setText(f"Không đọc được ảnh: {e}")
 
