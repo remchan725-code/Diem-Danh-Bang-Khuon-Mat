@@ -2,3 +2,35 @@
 __pycache__/
 .venv/
 venv/
+
+# ==========================================
+# Microsoft Office / Word Temporary Files
+# ==========================================
+# File khóa tạm do Word tạo ra khi đang mở (vd: ~$Document.docx)
+~$*
+~$*.doc
+~$*.docx
+~$*.docm
+~$*.dotx
+
+# File sao lưu tự động (AutoRecover/Backup) và file tạm của Word
+*.tmp
+~*.tmp
+*.asd
+*.wbk
+
+# ==========================================
+# Rclone / Remote Mount Temp Files
+# ==========================================
+*.rclone-tmp
+.rclone/
+
+# ==========================================
+# Windows System Metadata
+# ==========================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
