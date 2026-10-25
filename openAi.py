@@ -2,7 +2,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key="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",  # Thay key của bạn
+    api_key="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",  
 )
 
 def tao_loi_chao_diem_danh(ten_sinh_vien: str) -> str:
