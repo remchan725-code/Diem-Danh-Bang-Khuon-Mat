@@ -4,7 +4,7 @@ Project chính thức khởi tạo trên GitHub.
 -
 -
 - 01/11/2026:
-Nam nhận thấy rằng, việc so khớp trực tiếp dữ liệu từ server xuống, tuy rất tiện vì client (máy quét) sẽ chỉ là 1 cái vỏ bọc kèm 1 vài logic đơn giản, còn lại dữ liệu và xử lý nằm trọn trên server, nhưng khi mạng bị sập, bởi hư hỏng đường dây/truyền tải vật lý, hoặc dịch vụ server, thì máy client sẽ chết cứng.
+Nam nhận thấy rằng, việc so khớp trực tiếp dữ liệu từ server xuống, tuy rất tiện vì client (máy quét) sẽ chỉ là 1 cái vỏ bọc kèm 1 vài logic đơn giản, còn lại dữ liệu và xử lý nằm trọn trên server, nhưng khi mạng bị sập, bởi hư hỏng đường dây/truyền tải vật lý, hoặc sập dịch vụ server, thì máy client sẽ chết cứng.
 Do đó, Nam nghĩ đến 1 phương án: mỗi máy cần có 1 bản dữ liệu TỐI THIỂU để so khớp offline; mã sinh viên, vector dùng để so khớp và thông tin tối thiểu để hiển thị. Nếu muốn hiện tên khi mất mạng thì tên cũng cần được cache. Máy chạy model nhận diện và so khớp với bản cache tại chỗ, rồi ghi lượt điểm danh vào SQLite local. Không cần chạy PostgreSQL hay một local API server. Khi có mạng, ứng dụng gửi các lượt đang chờ lên backend/cloud; cloud cập nhật dữ liệu trung tâm và xác nhận đồng bộ.
 PostgreSQL chỉ chạy trên server chính với full dữ liệu đầy đủ, còn mỗi máy quét client sẽ chứa những gì cần thiết để quét rồi đẩy lên.
 Một lần nữa, nhấn mạnh TỐI THIỂU nhằm đảm bảo thông tin sinh viên không bị đánh cắp khi máy bị can thiệp vật lý/hijack hoặc bị hack và tiết kiệm tài nguyên phần cứng. Có thể đề xuất thêm nghiên cứu mã hóa dữ liệu theo 1 thuật toán riêng chi app mới giải mã, có điều với tính mã nguồn mở của dự án này thì có thể bị reverse engineering.
