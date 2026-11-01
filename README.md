@@ -1,5 +1,9 @@
 # Diem-Danh-Bang-Khuon-Mat
-Hệ thống điểm danh bằng khuôn mặt tránh gian lận sinh trắc học,
+Hệ thống điểm danh bằng khuôn mặt tránh gian lận sinh trắc học
+
+Dự án NCKH Khoa CNTT&TT HVQLGD
+- Nguyễn Hồng Nam
+- Nguyễn Minh Đức
 
 ## Chạy frontend trên Linux
 
