@@ -2,8 +2,10 @@
 Project chính thức khởi tạo trên GitHub.
 - 08-13/09/2026:
 Đặt nền móng cho hệ thống: tạo schema PostgreSQL và các bảng phục vụ lớp học, sinh viên, ca học, lịch sử điểm danh; tích hợp pgvector để lưu và truy vấn vector khuôn mặt. Xây dựng các phần đầu của Backend và AI Core, chạy thử luồng kết nối database, đăng ký và nhận diện.
+-15/9/2026:
+Tạo file crypto_utils.py để mã hóa và giải mã vector bằng Fernet, ai_core_mock.py mô phỏng AI core theo Contract.md đã được đề ra trước đó chạy khi chưa có service thật,main.py có 5 endpoint : đky sinh viên, điểm danh, d/sach lớp và kết quả điểm danh. Vấn đề là backend cần field vector dạng phẳng trong khi AI core trả về field embedding bên trong faces. Nhóm đã dùng ai_core_cliend.py để làm lớp chuyển đổi nên không cần sửa main.py.Ngoài ra 2 endpoint của A khai báo async nên đổi thành def để hông nghẽn sever
 - 13-21/09/2026:
-Phát triển giao diện PyQt và luồng webcam; bổ sung chế độ test để chạy giao diện khi Backend chưa sẵn sàng, đồng thời tách các phần Frontend/Backend thành thư mục riêng. Tiếp tục nối Backend với AI Core, tối ưu truy vấn điểm danh nhiều khuôn mặt và bổ sung giao diện đăng ký sinh viên bằng ảnh hoặc webcam.
+Phát triển giao diện PyQt6 và luồng webcam; bổ sung chế độ test để chạy giao diện khi Backend chưa sẵn sàng, đồng thời tách các phần Frontend/Backend thành thư mục riêng. Tiếp tục nối Backend với AI Core, tối ưu truy vấn điểm danh nhiều khuôn mặt và bổ sung giao diện đăng ký sinh viên bằng ảnh hoặc webcam.
 - 26/09-25/10/2026:
 Bổ sung chức năng tải ảnh từ máy để đăng ký khuôn mặt. Hoàn thiện thêm tài liệu thiết kế, cập nhật sơ đồ ER/database và thuyết minh đề tài; ngày 25/10 cập nhật bối cảnh và hướng dẫn làm việc của project trong CLAUDE.md.
 - 01/11/2026:
