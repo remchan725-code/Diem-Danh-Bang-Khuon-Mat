@@ -14,3 +14,5 @@ Do đó, Nam nghĩ đến 1 phương án: mỗi máy cần có 1 bản dữ li�
 PostgreSQL chỉ chạy trên server chính với full dữ liệu đầy đủ, còn mỗi máy quét client sẽ chứa những gì cần thiết để quét rồi đẩy lên.
 Một lần nữa, nhấn mạnh TỐI THIỂU nhằm đảm bảo thông tin sinh viên không bị đánh cắp khi máy bị can thiệp vật lý/hijack hoặc bị hack và tiết kiệm tài nguyên phần cứng. Có thể đề xuất thêm nghiên cứu mã hóa dữ liệu theo 1 thuật toán riêng chi app mới giải mã, có điều với tính mã nguồn mở của dự án này thì có thể bị reverse engineering.
 Có thể bồi thêm khả năng fallback sang mạng vô tuyến/không dây, nhưng cũng không chặn được việc sập dịch vụ bên server, cái này dù có mạng cũng down. Do đó Nam nghĩ phương án xử lý local trước rồi gửi lên sau khi server đã thông là ổn nhất.
+- 08/11/2026:
+Nam đề xuất sử dụng dịch vụ Supabase để chạy và lưu trữ backend server PostgreSQL vì tính tiện dụng của nó và khả năng mở rộng dễ dàng nếu quy mô server cần thêm tài nguyên
