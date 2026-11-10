@@ -57,11 +57,11 @@ Khi cấu hình Supabase, hãy đặt đầy đủ biến môi trường bên d�
 
 ### Chọn kiểu kết nối
 
-Ưu tiên lấy thông tin kết nối mà dashboard đề xuất cho nơi chạy backend:
+Trong project, bấm **Connect** ở đầu trang để xem thông tin kết nối. Chọn theo mạng nơi chạy FastAPI:
 
-- **Direct connection**: kết nối thẳng tới database. Có thể phù hợp khi máy chạy backend hỗ trợ mạng IPv6.
-- **Session pooler**: dùng khi cần pooler hoặc môi trường mạng không kết nối được direct connection, thường gặp trên mạng IPv4.
-- Tránh tự đoán host, user hoặc port. Một số thông tin pooler khác với direct connection; hãy sao chép chính xác từ dashboard.
+- **Direct connection**: dùng khi mạng của máy backend hỗ trợ IPv6, hoặc project có IPv4 add-on. Username thường là `postgres`, port thường là `5432`.
+- **Session pooler**: dùng nếu máy backend chỉ có IPv4. Đây là lựa chọn phù hợp để thử trên nhiều mạng gia đình/trường học. Sao chép host, port và username chính xác từ dashboard; username thường có dạng `postgres.<project-ref>` và port thường là `5432`.
+- Không chọn **Transaction pooler** cho hướng dẫn này; hãy dùng Direct hoặc Session pooler và sao chép thông tin từ dashboard, không tự đoán host/user/port.
 
 Không đưa mật khẩu database, connection string, `FERNET_KEY` hoặc service-role key vào Git, ảnh chụp màn hình, tài liệu công khai hay mã nguồn.
 
@@ -71,11 +71,22 @@ Không đưa mật khẩu database, connection string, `FERNET_KEY` hoặc servi
 
 Ứng dụng cần pgvector vì `SinhVien.vector_tho` có kiểu `VECTOR(512)` và truy vấn nhận diện dùng toán tử cosine distance `<=>`.
 
-1. Trong Supabase Dashboard, mở **SQL Editor**.
-2. Nếu dashboard có trang quản lý extension, bật extension **vector** tại đó. File schema của dự án cũng có lệnh `CREATE EXTENSION IF NOT EXISTS vector;`.
-3. Mở file `Face-ID-Backend/schema_postgres.sql` trong editor.
-4. Sao chép toàn bộ nội dung và chạy trong SQL Editor.
-5. Chạy các câu lệnh kiểm tra:
+1. Trong thanh điều hướng project, mở **Database → Extensions**, tìm `vector` và bật extension.
+2. Mở **SQL Editor → New query**.
+3. Mở file `Face-ID-Backend/schema_postgres.sql` trong VS Code, sao chép toàn bộ nội dung vào query và bấm **Run**.
+4. Nếu dashboard hiện cảnh báo hỏi có bật RLS cùng lúc không, chọn **Run without RLS**. Nút bật tự động đã gây lỗi `relation "LopHoc" does not exist` với schema này vì tên bảng được PostgreSQL chuyển thành chữ thường.
+5. Bật RLS thủ công bằng tên bảng chữ thường trong **SQL Editor → New query**:
+
+```sql
+ALTER TABLE public.lophoc ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sinhvien ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cahoc ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lichsudiemdanh ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nhatkyxacthuc ENABLE ROW LEVEL SECURITY;
+```
+
+Các bảng không có policy sẽ không truy cập được qua API với vai trò `anon`/`authenticated`. Backend hiện dùng kết nối PostgreSQL trực tiếp bằng tài khoản đặc quyền; không mở quyền Data API công khai để xử lý lỗi RLS.
+6. Chạy các câu lệnh kiểm tra:
 
 ```sql
 SELECT extname
@@ -139,19 +150,13 @@ $env:DB_PASSWORD = "<database password>"
 $env:DB_PORT = "<port từ Supabase>"
 ```
 
-`psycopg2` mặc định thương lượng SSL (`sslmode=prefer`). Nên dùng SSL bắt buộc cho kết nối tới Supabase. Hiện `Face-ID-Backend/db.py` **chưa đọc biến `DB_SSLMODE`**; để đặt tường minh, thêm cấu hình sau vào dictionary `DB_CONFIG` trong file đó:
-
-```python
-"sslmode": os.getenv("DB_SSLMODE", "require"),
-```
-
-Sau khi thêm, đặt biến:
+Đặt SSL bắt buộc bằng biến môi trường libpq `PGSSLMODE`; `psycopg2` nhận biến này mà không cần sửa `db.py`:
 
 ```powershell
-$env:DB_SSLMODE = "require"
+$env:PGSSLMODE = "require"
 ```
 
-Nếu chưa sửa `db.py`, biến `DB_SSLMODE` sẽ không có tác dụng. Không nên nghĩ rằng chỉ đặt biến môi trường là đủ nếu code chưa đọc biến đó.
+`require` mã hóa kết nối nhưng không xác minh danh tính máy chủ. Với triển khai production, nên cấu hình xác minh chứng chỉ theo hướng dẫn SSL của Supabase.
 
 Backend hiện đọc `FERNET_KEY` để mã hóa vector sinh trắc học. Đặt một khóa cố định cho môi trường này trước khi chạy:
 
@@ -283,7 +288,7 @@ Khi đó cần deploy FastAPI lên máy chủ/dịch vụ hosting riêng:
 
 - Không đặt database password, connection URI, `FERNET_KEY` hoặc Supabase service-role key trong frontend, repository, file commit lên Git, hay log.
 - PyQt chỉ gọi FastAPI; không nhúng thông tin đăng nhập database vào ứng dụng client.
-- Không bật quyền truy cập công khai vào các bảng chỉ để “cho app kết nối được”. Backend hiện dùng kết nối PostgreSQL trực tiếp; cấu hình quyền database/RLS cần được thiết kế có chủ đích trước khi mở các API Supabase trực tiếp.
+- Các bảng được bật RLS nhưng chưa có policy sẽ bị từ chối khi truy cập qua Data API với vai trò `anon`/`authenticated`. Backend hiện dùng kết nối PostgreSQL trực tiếp bằng tài khoản đặc quyền; không mở Data API công khai để xử lý lỗi kết nối. Nếu sau này dùng Data API, cần tạo policy giới hạn quyền trước khi cấp quyền truy cập.
 - Schema hiện có `vector_tho VECTOR(512)` để truy vấn pgvector và `vector_khuon_mat BYTEA` để lưu vector mã hóa. Vector thô vẫn tồn tại để so khớp; mã hóa cột kia không đồng nghĩa toàn bộ dữ liệu vector được bảo vệ khỏi tài khoản database có quyền đọc.
 - `main.py` hiện tự tạo Fernet key ngẫu nhiên nếu `FERNET_KEY` không được đặt. Cần đặt khóa cố định, bảo vệ backup khóa và có kế hoạch xoay/khôi phục khóa.
 - Đây là dữ liệu sinh trắc học và thông tin sinh viên. Chỉ đưa dữ liệu thật lên dịch vụ cloud khi nhóm đã xem xét quyền truy cập, backup, thời hạn lưu, đồng ý sử dụng và quy định áp dụng.
@@ -300,6 +305,7 @@ Khi đó cần deploy FastAPI lên máy chủ/dịch vụ hosting riêng:
 | Timeout / không kết nối được | Sai port, firewall, IPv4/IPv6 hoặc loại kết nối không phù hợp | Thử connection method được dashboard khuyến nghị, thường là Session pooler khi direct không truy cập được |
 | `connection refused` | Backend còn trỏ tới PostgreSQL local hoặc sai host/port | In/kiểm tra các biến DB trong cùng PowerShell đang chạy backend; xác nhận host và port |
 | `type "vector" does not exist` | Extension pgvector chưa được bật/tạo | Bật `vector`, chạy lại phần schema phù hợp và xác nhận trong `pg_extension` |
+| `relation "LopHoc" does not exist` khi chạy schema kèm RLS | Tác vụ tự bật RLS của dashboard tham chiếu tên viết hoa, trong khi PostgreSQL đã lưu tên không ngoặc kép thành chữ thường | Chọn **Run without RLS**, chạy schema, sau đó bật RLS bằng các lệnh `ALTER TABLE public.lophoc ...` ở mục 3 |
 | `relation "lophoc" does not exist` | Schema chưa chạy thành công, chạy sai project/database hoặc restore chưa hoàn tất | Kiểm tra project, database và các bảng trong schema `public` |
 | App chạy nhưng danh sách lớp trống | Database đúng nhưng chưa có dữ liệu lớp | Thêm lớp demo hoặc nhập dữ liệu cần thiết |
 | Đăng ký sinh viên lỗi khi gọi AI | AI Core chưa chạy/URL sai; không nhất thiết là lỗi Supabase | Kiểm tra riêng AI Core và cấu hình URL AI Core |
@@ -313,9 +319,13 @@ Không gửi password hoặc connection string nguyên văn khi nhờ người k
 ## 10. Quay lại PostgreSQL local
 
 1. Dừng backend.
-2. Trong cùng PowerShell, đặt lại `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT` theo PostgreSQL local.
-3. Nếu đã thêm `sslmode=require` cố định vào `db.py`, hãy bảo đảm môi trường PostgreSQL local cũng hỗ trợ SSL hoặc điều chỉnh cấu hình theo môi trường. Không tắt SSL cho Supabase chỉ để xử lý lỗi local.
-4. Khởi động backend lại.
+2. Trong cùng PowerShell, đặt lại `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT` theo PostgreSQL local; xóa `PGSSLMODE` nếu local không dùng SSL:
+
+  ```powershell
+  Remove-Item Env:PGSSLMODE -ErrorAction SilentlyContinue
+  ```
+
+3. Khởi động backend lại.
 
 Thay đổi biến môi trường không di chuyển dữ liệu giữa hai database. Dữ liệu ghi trên Supabase vẫn ở Supabase, dữ liệu local vẫn ở local, trừ khi đã chạy quy trình dump/restore.
 
@@ -345,7 +355,8 @@ Ngữ cảnh dự án:
   database; FastAPI và AI Core vẫn chạy local. Không mặc định rằng app đã được deploy
   lên cloud hay có hỗ trợ offline.
 - Face-ID-Backend/db.py dùng psycopg2 + pgvector.psycopg2.register_vector và đọc
-  DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT. File hiện chưa đọc DB_SSLMODE.
+  DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT. Đặt `PGSSLMODE=require` trong
+  môi trường để bắt buộc SSL mà không cần sửa `db.py`.
 - Face-ID-Backend/schema_postgres.sql tạo extension vector và các bảng
   LopHoc, SinhVien, CaHoc, LichSuDiemDanh, NhatKyXacThuc.
 - SinhVien.vector_tho VECTOR(512) và SinhVien.vector_khuon_mat BYTEA được giữ riêng
@@ -360,6 +371,10 @@ Ngữ cảnh dự án:
   sinh viên và điểm danh; việc tạo lớp/ca có thể cần SQL hoặc API quản trị riêng.
 - Supabase PostgreSQL không tự cung cấp offline attendance. Offline SQLite cache và
   đồng bộ là công việc riêng.
+- Khi chạy schema trong SQL Editor, nếu dashboard hỏi bật RLS thì chọn **Run without
+  RLS**, sau đó bật bằng các tên bảng chữ thường (`lophoc`, `sinhvien`, `cahoc`,
+  `lichsudiemdanh`, `nhatkyxacthuc`) như mục 3; không dùng tác vụ tự động đang gây lỗi
+  `relation "LopHoc" does not exist`.
 
 Khi sửa code:
 1. Đọc file hiện tại trước khi sửa và giữ nguyên các thay đổi chưa commit của người dùng.
