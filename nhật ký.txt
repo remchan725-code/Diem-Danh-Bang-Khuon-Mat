@@ -55,3 +55,27 @@ Sau khi dọn, các file mock/test nêu trên không còn trong dự án. Chưa 
 2. Xóa hai file hướng dẫn rời trong `Face-ID-Backend/` và `Face-ID-Frontend/` để tránh nội dung trùng lặp; giữ nguyên các tài liệu khác đang có trong `docs/`.
 3. Nêu rõ thông số PostgreSQL Docker Compose hiện tại (port host 5434, database `attendance_db`) khác mặc định trong `Face-ID-Backend/db.py`, và hướng dẫn đặt biến môi trường phù hợp thay vì trỏ nhầm database.
 4. Cập nhật README để dẫn tới tài liệu hợp nhất; ghi rõ test tự động chưa có sau khi xóa script cũ, đồng thời nhắc dùng database test riêng khi bổ sung pytest.
+- 12/11/2026 (định hướng tiếp theo) — Web quản trị Supabase:
+1. Xây dựng web app quản trị kết nối Supabase trực tiếp qua Supabase client, dùng Supabase Auth và RLS; không đưa service-role key hoặc database credentials xuống trình duyệt.
+2. Hỗ trợ đăng nhập email/password và email OTP. Mặc định không cho tự đăng ký; tài khoản giảng viên do dev/admin mời hoặc tạo. Với yêu cầu tự đăng xuất khi đóng browser, ưu tiên sessionStorage theo tab (giữ phiên qua reload cùng tab, thường bị xóa khi đóng tab); không lưu phiên dài hạn vào localStorage. Việc đóng browser không bảo đảm thu hồi token ngay lập tức phía server; giới hạn một phiên đồng thời trên nhiều thiết bị là yêu cầu riêng nếu cần.
+3. Có ba loại truy cập: khách chưa đăng nhập chỉ thấy trang đăng nhập và thông báo điểm danh chung; giảng viên chỉ truy cập lớp được phân công; dev/admin có quyền quản trị cao nhất.
+4. Quyền giảng viên mặc định chỉ xem để giảm rủi ro khi thử nghiệm. Dev/admin có thể bật/tắt từng quyền như dời ca học hoặc điều chỉnh điểm danh; các quyền phải được kiểm tra bằng RLS/database policy, giới hạn theo lớp được phân công và lưu dấu vết thay đổi. Không mặc định cho giảng viên sửa hồ sơ sinh viên hoặc quản lý tài khoản.
+5. Giao diện dev/admin có thể quản lý lớp, ca học, hồ sơ sinh viên và tài khoản. Đăng ký sinh viên bằng ảnh phải đi qua Backend/AI Core đã xác thực để tạo embedding; không cho browser tự ghi hoặc đọc `vector_tho`, `vector_khuon_mat`, và không lưu ảnh mặt thô vào web app.
+6. Giữ `NhatKyXacThuc` chỉ đọc, không sửa/xóa. Điều chỉnh thủ công lịch sử điểm danh cần có lý do và nhật ký quản trị riêng; không ghi đè không dấu vết.
+7. Trước khi triển khai cần rà soát schema hiện tại và đề xuất bổ sung bảng hồ sơ/role, phân công giảng viên-lớp, cấu hình quyền và nhật ký quản trị cùng RLS policies. Chưa áp dụng migration hay kết nối project Supabase production khi chưa được duyệt.
+
+Đây mới là hướng đề xuất, chưa triển khai code/schema. Việc cần xác nhận trước khi làm: ma trận quyền cụ thể của giảng viên, quyền nào dev/admin có thể bật, cách tạo tài khoản và liệu OTP chỉ là phương thức đăng nhập thay thế hay cần giới hạn một phiên hoạt động đồng thời trên nhiều thiết bị.
+
+- 12/11/2026 (định hướng tiếp theo) — Thống nhất InsightFace cho server và máy điểm danh:
+1. Dự kiến dùng InsightFace ở cả Backend/AI Core trung tâm và máy điểm danh local, với nhiệm vụ khác nhau: phía trung tâm xử lý đăng ký ảnh, tạo embedding chuẩn và lưu dữ liệu trung tâm; phía local trích xuất embedding từ frame và so khớp với cache tối thiểu để hỗ trợ điểm danh offline.
+2. Hai phía phải dùng cùng model pack, phiên bản thư viện, tiền xử lý ảnh, chuẩn hóa vector và cấu hình tương thích. Ghi/kiểm tra `vector_version` để tránh so khớp vector không tương thích; hiện schema đã có cột này nhưng cần xác nhận Backend đang ghi nhận phiên bản.
+3. Máy local cần có model InsightFace cùng cache vector/thông tin sinh viên tối thiểu; lưu lượt điểm danh chưa đồng bộ ở SQLite rồi gửi lên Backend/Supabase khi có mạng. Không lưu ảnh khuôn mặt thô mặc định.
+4. Định hướng này chưa được triển khai. Code hiện tại dùng InsightFace `buffalo_l` trong AI Core service; Frontend chưa có model local, SQLite offline hay cơ chế đồng bộ hoàn chỉnh. Cần kiểm tra điều kiện giấy phép của model weights trước khi phân phối model lên nhiều thiết bị hoặc dùng ngoài phạm vi nghiên cứu.
+
+- 12/11/2026 — Tạo lõi điểm danh local bản đầu:
+1. Thêm `Face-ID-Frontend/local_attendance_core.py`: trích vector bằng InsightFace `buffalo_l` local (ưu tiên CUDA, fallback CPU), so khớp cosine, giữ cache vector mã hóa Fernet trong SQLite và ghi lượt `co_mat` local với UNIQUE theo ca/sinh viên.
+2. Thêm lưu ca học cache, danh sách lượt chờ đồng bộ và thao tác đánh dấu đã đồng bộ sau khi server xác nhận; chưa có transport/API đồng bộ.
+3. Từ chối cache vector có `vector_version` không khớp `insightface_buffalo_l_v1` (kể cả cache cũ đọc lại); dùng biến môi trường `LOCAL_FERNET_KEY` ổn định theo thiết bị.
+4. Thêm unit tests dùng extractor giả lập cho match, người lạ, ghi trùng, ca chưa cache và sai phiên bản vector.
+
+Giới hạn: lõi chưa được nối vào `main_window.py`, chưa có endpoint bảo mật để tải roster/vector và ca học; Backend hiện chưa ghi `vector_version`. Do đó đây chưa phải luồng offline dùng được từ GUI và chưa có đồng bộ thực tế. Chưa có liveness/chống giả mạo; ngưỡng 0.4 cần được kiểm chứng với dữ liệu thật.

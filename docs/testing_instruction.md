@@ -34,6 +34,34 @@ Khi dùng PostgreSQL từ Compose, cấu hình Backend theo các giá trị trê
 PostgreSQL cài trực tiếp, dùng đúng host, port, database và thông tin đăng nhập
 của instance đó.
 
+### Lõi điểm danh local (bản kỹ thuật đầu tiên)
+
+`Face-ID-Frontend/local_attendance_core.py` có phần lõi chạy InsightFace ngay trên
+client: trích embedding từ frame BGR, so khớp cosine với cache sinh viên, mã hóa
+vector trong SQLite local và lưu kết quả `co_mat` chờ đồng bộ. Lõi chọn CUDA nếu
+ONNX Runtime hỗ trợ, nếu không thì dùng CPU; model pack `buffalo_l` được tải khi
+khởi tạo lần đầu nếu máy chưa có.
+
+Đặt một khóa Fernet cố định cho thiết bị trước khi dùng store. Ví dụ tạo khóa một
+lần rồi lưu an toàn; không tạo lại mỗi lần chạy:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+$env:LOCAL_FERNET_KEY = "<dán khóa vừa tạo vào đây>"
+```
+
+Đường dẫn SQLite mặc định nằm trong `%LOCALAPPDATA%\DiemDanhBangKhuonMat\`.
+Không dùng khóa hoặc database local này làm secret dùng chung cho nhiều thiết bị.
+
+**Giới hạn hiện tại:** lõi đã có API Python nhưng chưa được nối vào màn hình
+`main_window.py`; chưa có endpoint an toàn để tải roster/vector và ca học từ
+Backend, cũng chưa có luồng đồng bộ lượt pending lên server. Backend hiện chưa
+ghi `vector_version` khi đăng ký sinh viên. Vì vậy chưa thể dùng lõi này để thay
+luồng điểm danh chính hoặc khẳng định chế độ offline hoàn chỉnh. Chỉ đưa vector
+vào cache khi lấy từ nguồn đồng bộ đã xác thực và có `vector_version` đúng
+`insightface_buffalo_l_v1`. Đây là nhận diện khuôn mặt, chưa có liveness/chống giả
+mạo; ngưỡng 0.4 cần được kiểm thử với dữ liệu thật trước khi dùng vận hành.
+
 ### Dùng Supabase thay cho PostgreSQL local
 
 Supabase thay thế **dịch vụ PostgreSQL**, không thay thế FastAPI hoặc AI Core.
