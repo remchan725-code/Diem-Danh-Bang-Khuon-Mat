@@ -1,8 +1,14 @@
 # Hướng dẫn cài đặt, chạy và kiểm thử
 
-Tài liệu này là hướng dẫn duy nhất để chạy Frontend, Backend, AI Core và kiểm tra
-luồng điểm danh. Các lệnh bên dưới dùng PowerShell trên Windows và được chạy từ
+Tài liệu này là hướng dẫn chạy Client, Backend API, AI service và kiểm tra luồng
+điểm danh. Các lệnh bên dưới dùng PowerShell trên Windows và được chạy từ
 thư mục gốc của repository, trừ khi có ghi chú khác.
+
+```text
+FaceID-Client/       Ứng dụng PyQt chạy trên máy điểm danh
+FaceID-Backend/      FastAPI và AI service InsightFace
+FaceID-Database/     Schema PostgreSQL và Docker Compose
+```
 
 ## 1. Chuẩn bị
 
@@ -21,7 +27,7 @@ Cài thư viện vào môi trường ảo của project:
 Khởi động PostgreSQL/pgvector:
 
 ```powershell
-docker compose -f .\Face-ID-Backend\docker-compose.yml up -d
+docker compose -f .\FaceID-Database\docker-compose.yml up -d
 ```
 
 Compose hiện ánh xạ cổng máy `5434` tới cổng PostgreSQL `5432` trong container,
@@ -36,7 +42,7 @@ của instance đó.
 
 ### Lõi điểm danh local (bản kỹ thuật đầu tiên)
 
-`Face-ID-Frontend/local_attendance_core.py` có phần lõi chạy InsightFace ngay trên
+`FaceID-Client/local_attendance_core.py` có phần lõi chạy InsightFace ngay trên
 client: trích embedding từ frame BGR, so khớp cosine với cache sinh viên, mã hóa
 vector trong SQLite local và lưu kết quả `co_mat` chờ đồng bộ. Lõi chọn CUDA nếu
 ONNX Runtime hỗ trợ, nếu không thì dùng CPU; model pack `buffalo_l` được tải khi
@@ -64,8 +70,8 @@ mạo; ngưỡng 0.4 cần được kiểm thử với dữ liệu thật trư�
 
 ### Dùng Supabase thay cho PostgreSQL local
 
-Supabase thay thế **dịch vụ PostgreSQL**, không thay thế FastAPI hoặc AI Core.
-Trong cấu hình hướng dẫn này, Frontend, Backend và AI Core vẫn chạy trên máy
+Supabase thay thế **dịch vụ PostgreSQL**, không thay thế FastAPI hoặc AI service.
+Trong cấu hình hướng dẫn này, Client, Backend API và AI service vẫn chạy trên máy
 của bạn; Backend kết nối qua Internet tới PostgreSQL trên Supabase. Không cần
 khởi động Docker Compose khi dùng Supabase. Giữ file Compose để phát triển local
 hoặc kiểm thử khi không muốn dùng database cloud.
@@ -90,15 +96,15 @@ hoặc kiểm thử khi không muốn dùng database cloud.
    Đặt `FERNET_KEY` thành khóa Fernet cố định và lưu an toàn; không tạo khóa mới
    mỗi lần chạy vì dữ liệu đã mã hóa cần đúng khóa cũ để giải mã. Cách tạo và
    bảo quản khóa được hướng dẫn trong tài liệu Supabase.
-3. Khởi động AI Core như bình thường, rồi chạy Backend trong **chính cửa sổ đã
+3. Khởi động AI service như bình thường, rồi chạy Backend API trong **chính cửa sổ đã
    đặt các biến trên**:
 
    ```powershell
-   .\.venv\Scripts\python.exe .\Face-ID-Backend\main.py
+   .\.venv\Scripts\python.exe .\FaceID-Backend\main.py
    ```
 
 4. Kiểm tra Backend kết nối được database bằng endpoint liệt kê lớp như mục 5,
-   sau đó chạy Frontend như mục 2. Nếu Backend vẫn đang trỏ tới Compose, kiểm
+   sau đó chạy Client như mục 2. Nếu Backend vẫn đang trỏ tới Compose, kiểm
    tra lại `DB_*` trong cửa sổ Backend. Việc đổi cấu hình không chuyển dữ liệu
    giữa PostgreSQL local và Supabase.
 
@@ -107,12 +113,12 @@ hoặc kiểm thử khi không muốn dùng database cloud.
 Mỗi dịch vụ chạy trong một cửa sổ PowerShell riêng. Biến môi trường chỉ có hiệu
 lực trong cửa sổ nơi biến được đặt.
 
-### Terminal 1 — AI Core
+### Terminal 1 — AI service (InsightFace)
 
 ```powershell
 $env:AI_CORE_HOST="127.0.0.1"
 $env:AI_CORE_PORT="8001"
-.\.venv\Scripts\python.exe .\AI-Core\insightface_run.py
+.\.venv\Scripts\python.exe .\FaceID-Backend\ai_service\insightface_run.py
 ```
 
 ### Terminal 2 — Backend
@@ -130,18 +136,18 @@ $env:DB_PORT="5434"
 $env:DB_NAME="attendance_db"
 $env:DB_USER="postgres"
 $env:DB_PASSWORD="postgres"
-.\.venv\Scripts\python.exe .\Face-ID-Backend\main.py
+.\.venv\Scripts\python.exe .\FaceID-Backend\main.py
 ```
 
 Backend API và tài liệu OpenAPI có tại `http://127.0.0.1:8000` và
 `http://127.0.0.1:8000/docs`.
 
-### Terminal 3 — Frontend
+### Terminal 3 — Client
 
 ```powershell
 $env:BACKEND_API_BASE_URL="http://127.0.0.1:8000"
 $env:APP_DEBUG="true"
-.\.venv\Scripts\python.exe .\Face-ID-Frontend\main_window.py
+.\.venv\Scripts\python.exe .\FaceID-Client\main_window.py
 ```
 
 Ứng dụng chính gọi dịch vụ thật, không tự chuyển sang dữ liệu giả khi dịch vụ lỗi.
@@ -152,63 +158,63 @@ Nếu Backend không kết nối được, kiểm tra Backend, PostgreSQL và
 
 | Biến môi trường | Đọc bởi | Mặc định | Chức năng |
 |---|---|---|---|
-| `BACKEND_API_BASE_URL` | Frontend | `http://127.0.0.1:8000` | URL Backend API |
+| `BACKEND_API_BASE_URL` | Client | `http://127.0.0.1:8000` | URL Backend API |
 | `BACKEND_HOST` / `BACKEND_PORT` | Backend | `127.0.0.1` / `8000` | Host và cổng Backend lắng nghe |
-| `AI_CORE_BASE_URL` | Backend | `http://127.0.0.1:8001` | URL AI Core API |
-| `AI_CORE_HOST` / `AI_CORE_PORT` | AI Core | `0.0.0.0` / `8001` | Host và cổng AI Core lắng nghe |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Backend | Mặc định trong `Face-ID-Backend/db.py` | Kết nối PostgreSQL |
+| `AI_CORE_BASE_URL` | Backend API | `http://127.0.0.1:8001` | URL AI service |
+| `AI_CORE_HOST` / `AI_CORE_PORT` | AI service | `0.0.0.0` / `8001` | Host và cổng AI service lắng nghe |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Backend API | Mặc định trong `FaceID-Backend/db.py` | Kết nối PostgreSQL |
 | `PGSSLMODE` | Backend/libpq | Tùy môi trường | Dùng `require` khi kết nối Supabase |
-| `APP_DEBUG` | Frontend | `true` | Hiện/ẩn lựa chọn camera và công cụ phát triển |
+| `APP_DEBUG` | Client | `true` | Hiện/ẩn lựa chọn camera và công cụ phát triển |
 
 Đặt các biến môi trường trước khi khởi động tiến trình tương ứng. Không ghi mật
 khẩu database, khóa mã hóa hoặc thông tin xác thực vào mã nguồn hay Git.
 
 ## 4. Chạy các dịch vụ qua mạng LAN
 
-Trên máy cung cấp AI Core, bind dịch vụ vào giao diện mạng:
+Trên máy cung cấp AI service, bind dịch vụ vào giao diện mạng:
 
 ```powershell
 $env:AI_CORE_HOST="0.0.0.0"
 $env:AI_CORE_PORT="8001"
-.\.venv\Scripts\python.exe .\AI-Core\insightface_run.py
+.\.venv\Scripts\python.exe .\FaceID-Backend\ai_service\insightface_run.py
 ```
 
-Trên máy Backend, dùng địa chỉ IP LAN của máy AI Core và cấu hình database có thể
+Trên máy Backend, dùng địa chỉ IP LAN của máy AI service và cấu hình database có thể
 truy cập từ Backend:
 
 ```powershell
 $env:BACKEND_HOST="0.0.0.0"
 $env:BACKEND_PORT="8000"
-$env:AI_CORE_BASE_URL="http://<IP_AI_CORE>:8001"
+$env:AI_CORE_BASE_URL="http://<IP_AI_SERVICE>:8001"
 $env:DB_HOST="<IP_POSTGRESQL>"
 $env:DB_PORT="<PORT_POSTGRESQL>"
 $env:DB_NAME="<TEN_DATABASE>"
 $env:DB_USER="<DATABASE_USER>"
 $env:DB_PASSWORD="<DATABASE_PASSWORD>"
-.\.venv\Scripts\python.exe .\Face-ID-Backend\main.py
+.\.venv\Scripts\python.exe .\FaceID-Backend\main.py
 ```
 
-Trên máy chạy Frontend, trỏ tới IP LAN của Backend:
+Trên máy chạy Client, trỏ tới IP LAN của Backend:
 
 ```powershell
 $env:BACKEND_API_BASE_URL="http://<IP_BACKEND>:8000"
-.\.venv\Scripts\python.exe .\Face-ID-Frontend\main_window.py
+.\.venv\Scripts\python.exe .\FaceID-Client\main_window.py
 ```
 
 `0.0.0.0` chỉ là địa chỉ bind trên máy chủ, không dùng làm URL để gọi dịch vụ.
-Chỉ mở các cổng cần thiết trong firewall; không công khai AI Core hoặc PostgreSQL
+Chỉ mở các cổng cần thiết trong firewall; không công khai AI service hoặc PostgreSQL
 trực tiếp ra Internet.
 
 ## 5. Dùng dịch vụ cloud
 
 Đặt URL dịch vụ và thông tin database trong cấu hình môi trường/secret manager
-của nơi triển khai. Frontend cần URL Backend HTTPS, Backend cần URL AI Core và
+của nơi triển khai. Client cần URL Backend HTTPS, Backend cần URL AI service và
 PostgreSQL có thể truy cập được.
 
 Ví dụ URL:
 
-- Frontend: `BACKEND_API_BASE_URL=https://<BACKEND_DOMAIN>`
-- Backend: `AI_CORE_BASE_URL=https://<AI_CORE_DOMAIN>`
+- Client: `BACKEND_API_BASE_URL=https://<BACKEND_DOMAIN>`
+- Backend: `AI_CORE_BASE_URL=https://<AI_SERVICE_DOMAIN>`
 
 Chưa triển khai xác thực API, HTTPS termination hay cấu hình bảo vệ production
 trong mã nguồn hiện tại. Cần hoàn thiện các biện pháp này trước khi đưa dịch vụ
@@ -217,7 +223,7 @@ lên Internet; không dùng trực tiếp cấu hình local làm cấu hình pro
 ## 6. Kiểm tra luồng chức năng
 
 1. Mở `http://127.0.0.1:8000/docs` để xác nhận Backend khởi động.
-2. Trong Frontend, tải danh sách lớp và ca học.
+2. Trong Client, tải danh sách lớp và ca học.
 3. Đăng ký sinh viên bằng ảnh có một khuôn mặt rõ hoặc lấy ảnh từ webcam.
 4. Bắt đầu ca, kiểm tra nhận diện và thông báo kết quả.
 5. Kết thúc ca, kiểm tra danh sách điểm danh trong màn hình tổng kết.
@@ -225,12 +231,12 @@ lên Internet; không dùng trực tiếp cấu hình local làm cấu hình pro
 Có thể kiểm tra webcam độc lập mà không gọi Backend:
 
 ```powershell
-.\.venv\Scripts\python.exe .\Face-ID-Frontend\camera_worker.py
+.\.venv\Scripts\python.exe .\FaceID-Client\camera_worker.py
 ```
 
-Các script mock/seed/E2E cũ đã được xóa. Hiện chưa có bộ kiểm thử tự động thay
-thế; không chạy thử trên database có dữ liệu cần giữ. Khi bổ sung test tự động,
-dùng database test riêng và pytest.
+Các script mock/seed/E2E cũ đã được xóa. Unit test cho lõi điểm danh local nằm
+trong `tests/` và chạy bằng `unittest`; hiện chưa có kiểm thử tích hợp PostgreSQL
+hay đồng bộ offline. Dùng database test riêng cho bất kỳ test nào ghi PostgreSQL.
 
 ## 7. Chế độ Development
 
@@ -238,5 +244,5 @@ Mặc định `APP_DEBUG=true` để hiện lựa chọn camera. Ẩn công cụ
 
 ```powershell
 $env:APP_DEBUG="false"
-.\.venv\Scripts\python.exe .\Face-ID-Frontend\main_window.py
+.\.venv\Scripts\python.exe .\FaceID-Client\main_window.py
 ```

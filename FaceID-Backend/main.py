@@ -295,7 +295,7 @@ if __name__ == "__main__":
     import uvicorn
     import pathlib
     # reload=True cần biết thư mục chứa file để watch — dùng app_dir để chạy
-    # được dù terminal đang ở thư mục gốc hay cd vào Face-ID-Backend
+    # được dù terminal đang ở thư mục gốc hay cd vào FaceID-Backend
     uvicorn.run(
         "main:app",
         host=os.getenv("BACKEND_HOST", "127.0.0.1"),

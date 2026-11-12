@@ -71,22 +71,25 @@ For multi-step tasks, state a brief plan:
 Two-person NCKH research project: an automated face recognition attendance system.
 
 - **Member B (backend + infrastructure):** the project owner of this repo, an IT student.
-- **Member A (AI Core):** InsightFace, ArcFace 512-dim embeddings. Not our code - treat as an external service.
-- `CONTRACT.md` defines the AI Core interface between A and B. **Read it before touching anything that talks to the AI Core.**
+- **AI service:** InsightFace/ArcFace 512-dim embeddings, stored under `FaceID-Backend/ai_service/`. Keep its response contract stable unless both project members agree to change it.
 
 ## Stack
 
-- Backend: Python, FastAPI (`main.py`), Fernet encryption (`crypto_utils.py`)
-- Data: SQLite on edge device (offline-first) → sync to PostgreSQL + pgvector on server
+- Client: PyQt6, `QStackedWidget`, `QThread`, `pyqtSignal` (`FaceID-Client/`)
+- Backend: Python/FastAPI and the InsightFace AI service (`FaceID-Backend/`)
+- Data: local SQLite attendance/cache on client; PostgreSQL + pgvector schema and Docker Compose (`FaceID-Database/`)
 - Infra: Docker Compose (PostgreSQL + pgvector, must work on Windows)
-- UI: PyQt5 (`QStackedWidget`, `QThread`, `pyqtSignal`)
-- Tests: custom e2e scripts, migrating to pytest
+- Encryption: Fernet (`FaceID-Backend/crypto_utils.py`)
+- Tests: local-core unit tests under `tests/`; no database sync integration tests yet
 
 ## Key files
 
-- `main.py` - 5 API endpoints
-- `ai_core_client.py` - adapter from A's response (`faces: [{embedding: ...}]`) to the flat format `main.py` expects
-- `api_client.py`, `camera_worker.py`, `main_window.py` - UI layer (3 screens: `ManHinhBatDauCa`, `ManHinhDiemDanhLive`, `ManHinhTongKet`)
+- `FaceID-Backend/main.py` - FastAPI endpoints
+- `FaceID-Backend/ai_core_client.py` - adapter from AI response (`faces: [{embedding: ...}]`) to the flat format `main.py` expects
+- `FaceID-Backend/ai_service/insightface_run.py` - InsightFace service
+- `FaceID-Database/schema_postgres.sql` - PostgreSQL/pgvector schema
+- `FaceID-Client/api_client.py`, `camera_worker.py`, `main_window.py` - client UI
+- `FaceID-Client/local_attendance_core.py` - local recognition/cache core; not yet wired to the main UI or sync API
 
 ## Project-specific rules
 

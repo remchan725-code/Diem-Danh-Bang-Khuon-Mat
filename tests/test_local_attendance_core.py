@@ -8,7 +8,7 @@ import numpy as np
 from cryptography.fernet import Fernet
 
 sys.path.insert(
-    0, str(Path(__file__).resolve().parents[1] / "Face-ID-Frontend")
+    0, str(Path(__file__).resolve().parents[1] / "FaceID-Client")
 )
 
 from local_attendance_core import (  # pyright: ignore[reportMissingImports]

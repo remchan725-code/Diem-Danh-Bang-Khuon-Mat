@@ -4,15 +4,15 @@ Tài liệu này hướng dẫn theo code hiện tại của dự án, ưu tiên
 
 > **FastAPI vẫn chạy trên máy của bạn; chỉ database PostgreSQL chuyển lên Supabase.**
 
-Frontend PyQt tiếp tục gọi FastAPI. Frontend **không** kết nối trực tiếp với Supabase/PostgreSQL.
+Client PyQt tiếp tục gọi FastAPI. Client **không** kết nối trực tiếp với Supabase/PostgreSQL.
 
 ```text
-PyQt frontend ──HTTP──> FastAPI backend trên máy bạn ──PostgreSQL──> Supabase
+FaceID-Client ──HTTP──> FaceID-Backend (FastAPI) ──PostgreSQL──> Supabase
                                   │
-                                  └──> AI Core (nếu đang dùng service AI thật)
+                                  └──> AI service trong FaceID-Backend (cổng 8001)
 ```
 
-Sau khi thử nghiệm ổn, có thể deploy FastAPI lên một máy chủ riêng. Đó là bước độc lập; Supabase cung cấp PostgreSQL, không tự host ứng dụng FastAPI hoặc AI Core.
+AI service nằm cùng thư mục với FastAPI nhưng vẫn chạy process riêng ở cổng 8001 để giữ nguyên giao tiếp hiện tại. Supabase chỉ cung cấp PostgreSQL, không tự host Backend hoặc AI service.
 
 ---
 
@@ -27,17 +27,17 @@ Bạn cần:
 
 Các file liên quan trong dự án:
 
-- `Face-ID-Backend/db.py`: tạo kết nối PostgreSQL bằng `psycopg2`, đọc các biến `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`; đăng ký kiểu dữ liệu pgvector.
-- `Face-ID-Backend/schema_postgres.sql`: tạo extension `vector`, các bảng và index.
-- `Face-ID-Backend/main.py`: FastAPI dùng kết nối từ `db.py`.
-- `Face-ID-Frontend/api_client.py`: frontend đang gọi `http://localhost:8000`.
-- `Face-ID-Backend/docker-compose.yml`: PostgreSQL local để phát triển; không cần chạy database này khi backend đã trỏ tới Supabase.
+- `FaceID-Backend/db.py`: tạo kết nối PostgreSQL bằng `psycopg2`, đọc các biến `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`; đăng ký kiểu dữ liệu pgvector.
+- `FaceID-Database/schema_postgres.sql`: tạo extension `vector`, các bảng và index.
+- `FaceID-Backend/main.py`: FastAPI dùng kết nối từ `db.py`.
+- `FaceID-Client/api_client.py`: Client gọi Backend API tại `http://localhost:8000`.
+- `FaceID-Database/docker-compose.yml`: PostgreSQL local để phát triển; không cần chạy database này khi Backend đã trỏ tới Supabase.
 
 ### Kiểm tra cấu hình hiện tại
 
 Giá trị mặc định trong `db.py` không khớp hoàn toàn với `docker-compose.yml`:
 
-| Cấu hình | `db.py` mặc định | Docker Compose |
+| Cấu hình | `FaceID-Backend/db.py` mặc định | `FaceID-Database/docker-compose.yml` |
 |---|---:|---:|
 | Database | `postgres` | `attendance_db` |
 | Password | `12345` | `postgres` |
@@ -73,7 +73,7 @@ Không đưa mật khẩu database, connection string, `FERNET_KEY` hoặc servi
 
 1. Trong thanh điều hướng project, mở **Database → Extensions**, tìm `vector` và bật extension.
 2. Mở **SQL Editor → New query**.
-3. Mở file `Face-ID-Backend/schema_postgres.sql` trong VS Code, sao chép toàn bộ nội dung vào query và bấm **Run**.
+3. Mở file `FaceID-Database/schema_postgres.sql` trong VS Code, sao chép toàn bộ nội dung vào query và bấm **Run**.
 4. Nếu dashboard hiện cảnh báo hỏi có bật RLS cùng lúc không, chọn **Run without RLS**. Nút bật tự động đã gây lỗi `relation "LopHoc" does not exist` với schema này vì tên bảng được PostgreSQL chuyển thành chữ thường.
 5. Bật RLS thủ công bằng tên bảng chữ thường trong **SQL Editor → New query**:
 
@@ -134,7 +134,7 @@ VALUES (1, CURRENT_DATE, TIME '08:00', TIME '09:00')
 RETURNING id;
 ```
 
-Các câu lệnh trên chỉ tạo dữ liệu demo. Tránh chèn một sinh viên giả nếu muốn thử nhận diện thật, vì luồng đăng ký cần embedding tương thích được tạo bởi AI Core.
+Các câu lệnh trên chỉ tạo dữ liệu demo. Tránh chèn một sinh viên giả nếu muốn thử nhận diện thật, vì luồng đăng ký cần embedding tương thích được tạo bởi AI service trong `FaceID-Backend/ai_service/`.
 
 ---
 
@@ -175,7 +175,7 @@ Lưu khóa vào password manager hoặc secret manager, không lưu vào reposit
 Khởi động backend trong chính cửa sổ PowerShell đã đặt biến:
 
 ```powershell
-.\.venv\Scripts\python.exe .\Face-ID-Backend\main.py
+.\.venv\Scripts\python.exe .\FaceID-Backend\main.py
 ```
 
 Nếu môi trường ảo của bạn nằm ở vị trí khác, dùng đường dẫn Python thực tế của môi trường đó. Biến `$env:...` chỉ có hiệu lực trong cửa sổ PowerShell hiện tại; mở cửa sổ mới thì phải đặt lại.
@@ -210,17 +210,17 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/ca-hoc?lop_id=1"
 
 Thay `1` bằng ID lớp thật. Nếu endpoint trả về JSON thay vì lỗi database, kết nối FastAPI → Supabase hoạt động.
 
-### Bước 3: thử giao diện
+### Bước 3: thử Client
 
-Khi FastAPI chạy tại `localhost:8000`, mở ứng dụng PyQt như bình thường. Frontend hiện gọi backend ở `http://localhost:8000`, nên **chưa cần sửa frontend** nếu backend vẫn chạy trên cùng máy.
+Khi Backend API chạy tại `localhost:8000`, mở Client như bình thường. Client mặc định gọi `http://127.0.0.1:8000`; nếu Backend ở máy khác, đặt `BACKEND_API_BASE_URL`.
 
 ### Bước 4: thử đăng ký/điểm danh
 
-Các bước này còn phụ thuộc vào AI Core:
+Các bước này còn phụ thuộc vào AI service trong `FaceID-Backend/ai_service/`:
 
-- Đăng ký sinh viên cần AI Core trả embedding.
-- Điểm danh cần AI Core xử lý frame và database có sinh viên đã đăng ký.
-- E2E test có thể ghi dữ liệu vào database đang cấu hình. Chỉ chạy trên project Supabase thử nghiệm hoặc sau khi đã hiểu dữ liệu mà test tạo ra.
+- Đăng ký sinh viên cần AI service trả embedding.
+- Điểm danh cần AI service xử lý frame và database có sinh viên đã đăng ký.
+- Hiện chưa có E2E test hoặc kiểm thử tích hợp PostgreSQL trong repository. Dùng project Supabase thử nghiệm nếu tự kiểm tra các luồng có ghi dữ liệu.
 
 ---
 
@@ -267,7 +267,7 @@ Không cần deploy thêm gì. Luồng là:
 PyQt trên máy bạn → FastAPI trên máy bạn → Supabase
 ```
 
-Frontend và backend cùng máy nên `localhost:8000` vẫn đúng.
+Client và Backend cùng máy nên `localhost:8000` vẫn đúng.
 
 ### Muốn người khác hoặc máy khác dùng app qua Internet
 
@@ -276,8 +276,8 @@ Khi đó cần deploy FastAPI lên máy chủ/dịch vụ hosting riêng:
 1. Cấu hình biến database và `FERNET_KEY` bằng secrets của nền tảng deploy.
 2. Cập nhật backend để bind ra interface phù hợp (hiện `main.py` chạy với host `127.0.0.1`).
 3. Cấu hình HTTPS, firewall/network access và giới hạn nguồn truy cập database nếu nền tảng hỗ trợ.
-4. Đặt URL backend thành cấu hình có thể thay đổi. Hiện `Face-ID-Frontend/api_client.py` hard-code `BASE_URL = "http://localhost:8000"`; máy client khác sẽ gọi chính máy của người dùng, không phải server.
-5. Nếu AI Core chạy riêng, bảo đảm backend production truy cập được AI Core qua URL cấu hình phù hợp.
+4. Đặt `BACKEND_API_BASE_URL` trỏ tới URL HTTPS của Backend. Client mặc định gọi `http://127.0.0.1:8000`, còn `FaceID-Client/api_client.py` cho phép cấu hình URL qua biến môi trường.
+5. AI service nằm trong cùng thư mục dự án Backend nhưng vẫn là process riêng; bảo đảm Backend production truy cập được AI service qua `AI_CORE_BASE_URL`.
 6. Chỉ mở các API cần thiết; thêm xác thực/phân quyền và giới hạn truy cập trước khi đưa dữ liệu thật lên Internet.
 
 Đây là một giai đoạn triển khai riêng. Chỉ có database Supabase thì các máy client khác vẫn chưa thể gọi được FastAPI trên máy bạn.
@@ -308,8 +308,8 @@ Khi đó cần deploy FastAPI lên máy chủ/dịch vụ hosting riêng:
 | `relation "LopHoc" does not exist` khi chạy schema kèm RLS | Tác vụ tự bật RLS của dashboard tham chiếu tên viết hoa, trong khi PostgreSQL đã lưu tên không ngoặc kép thành chữ thường | Chọn **Run without RLS**, chạy schema, sau đó bật RLS bằng các lệnh `ALTER TABLE public.lophoc ...` ở mục 3 |
 | `relation "lophoc" does not exist` | Schema chưa chạy thành công, chạy sai project/database hoặc restore chưa hoàn tất | Kiểm tra project, database và các bảng trong schema `public` |
 | App chạy nhưng danh sách lớp trống | Database đúng nhưng chưa có dữ liệu lớp | Thêm lớp demo hoặc nhập dữ liệu cần thiết |
-| Đăng ký sinh viên lỗi khi gọi AI | AI Core chưa chạy/URL sai; không nhất thiết là lỗi Supabase | Kiểm tra riêng AI Core và cấu hình URL AI Core |
-| Frontend trên máy khác không kết nối được | `localhost` trỏ tới máy client, không phải máy backend | Deploy backend và cấu hình frontend dùng URL backend có thể truy cập |
+| Đăng ký sinh viên lỗi khi gọi AI | AI service chưa chạy/URL sai; không nhất thiết là lỗi Supabase | Kiểm tra AI service trong `FaceID-Backend/ai_service/` và `AI_CORE_BASE_URL` |
+| Client trên máy khác không kết nối được | `localhost` trỏ tới máy client, không phải máy Backend | Deploy Backend API và cấu hình `BACKEND_API_BASE_URL` trên Client |
 | Vector đã mã hóa không giải mã được | `FERNET_KEY` bị thiếu hoặc thay đổi sau khi mã hóa dữ liệu | Khôi phục đúng khóa đã dùng; không tạo khóa thay thế nếu chưa có kế hoạch chuyển đổi dữ liệu |
 
 Không gửi password hoặc connection string nguyên văn khi nhờ người khác xem lỗi. Hãy che giá trị bí mật và chỉ chia sẻ thông báo lỗi đã loại bỏ thông tin nhạy cảm.
@@ -334,7 +334,7 @@ Thay đổi biến môi trường không di chuyển dữ liệu giữa hai data
 ## 11. Những việc chưa được thực hiện trong tài liệu này
 
 - Không sửa code ứng dụng hay tạo migration tự động.
-- Không deploy FastAPI hoặc AI Core.
+- Không deploy FastAPI hoặc AI service.
 - Không triển khai đồng bộ offline SQLite ↔ Supabase.
 - Không thiết kế authentication/authorization hoàn chỉnh cho API.
 - Không tự chuyển dữ liệu local lên cloud.
@@ -349,22 +349,23 @@ Sao chép đoạn dưới đây vào phiên làm việc mới. Không điền pa
 
 ```text
 Ngữ cảnh dự án:
-- Đây là app điểm danh khuôn mặt NCKH, backend Python/FastAPI, database PostgreSQL,
-  frontend PyQt6. Hệ điều hành phát triển là Windows.
+- Đây là app điểm danh khuôn mặt NCKH, Backend Python/FastAPI và AI service nằm trong
+  `FaceID-Backend/`, schema/Compose trong `FaceID-Database/`, Client PyQt6 trong
+  `FaceID-Client/`. Hệ điều hành phát triển là Windows.
 - PostgreSQL đang được chuyển dần sang Supabase. Ưu tiên hiện tại là chỉ đổi nơi lưu
-  database; FastAPI và AI Core vẫn chạy local. Không mặc định rằng app đã được deploy
+  database; FastAPI và AI service vẫn chạy local. Không mặc định rằng app đã được deploy
   lên cloud hay có hỗ trợ offline.
-- Face-ID-Backend/db.py dùng psycopg2 + pgvector.psycopg2.register_vector và đọc
+- `FaceID-Backend/db.py` dùng psycopg2 + pgvector.psycopg2.register_vector và đọc
   DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT. Đặt `PGSSLMODE=require` trong
   môi trường để bắt buộc SSL mà không cần sửa `db.py`.
-- Face-ID-Backend/schema_postgres.sql tạo extension vector và các bảng
+- `FaceID-Database/schema_postgres.sql` tạo extension vector và các bảng
   LopHoc, SinhVien, CaHoc, LichSuDiemDanh, NhatKyXacThuc.
 - SinhVien.vector_tho VECTOR(512) và SinhVien.vector_khuon_mat BYTEA được giữ riêng
   có chủ đích: vector_tho dùng truy vấn pgvector, BYTEA chứa vector mã hóa.
-- Không đổi hợp đồng AI Core hoặc tên trường của AI Core nếu chưa xác nhận với chủ
+- Không đổi hợp đồng AI Core hoặc tên trường của AI service nếu chưa xác nhận với chủ
   dự án. Logic chuyển đổi định dạng AI nằm trong ai_core_client.py.
-- Frontend hiện gọi BASE_URL = http://localhost:8000 trong
-  Face-ID-Frontend/api_client.py. Nếu deploy backend, cần làm BASE_URL có thể cấu hình.
+- Client hiện gọi Backend qua `BACKEND_API_BASE_URL` trong
+  `FaceID-Client/api_client.py`. Khi deploy Backend, đặt URL có thể truy cập từ Client.
 - Không đưa secret vào code/Git/frontend. FERNET_KEY phải ổn định và được lưu an toàn;
   main.py hiện tự sinh key nếu biến này thiếu nên cần xử lý trước production.
 - Schema không tự có dữ liệu lớp/ca/sinh viên. Backend hiện liệt kê lớp/ca, đăng ký

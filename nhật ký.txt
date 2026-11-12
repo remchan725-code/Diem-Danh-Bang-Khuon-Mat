@@ -79,3 +79,10 @@ Sau khi dọn, các file mock/test nêu trên không còn trong dự án. Chưa 
 4. Thêm unit tests dùng extractor giả lập cho match, người lạ, ghi trùng, ca chưa cache và sai phiên bản vector.
 
 Giới hạn: lõi chưa được nối vào `main_window.py`, chưa có endpoint bảo mật để tải roster/vector và ca học; Backend hiện chưa ghi `vector_version`. Do đó đây chưa phải luồng offline dùng được từ GUI và chưa có đồng bộ thực tế. Chưa có liveness/chống giả mạo; ngưỡng 0.4 cần được kiểm chứng với dữ liệu thật.
+
+- 12/11/2026 — Tái cấu trúc thư mục theo vai trò:
+1. Đổi `Face-ID-Frontend` thành `FaceID-Client`; chuyển ứng dụng PyQt và lõi SQLite local sang đây.
+2. Đổi thư mục AI `AI-Core` thành `FaceID-Backend`; chuyển logic FastAPI, kết nối PostgreSQL và mã hóa từ thư mục Backend cũ vào đây.
+3. Tách `schema_postgres.sql` và `docker-compose.yml` sang `FaceID-Database`.
+4. Đặt AI service trong `FaceID-Backend/ai_service/`. Để giữ hành vi hiện tại, FastAPI vẫn chạy cổng 8000 và AI service vẫn là process riêng ở cổng 8001.
+5. Cập nhật các đường dẫn chạy, tài liệu Supabase, README, test import path và hướng dẫn dự án.
