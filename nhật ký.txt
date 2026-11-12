@@ -39,7 +39,7 @@ Các vấn đề cần làm rõ/hoàn thiện tiếp:
 4. Backend gọi module `ai_core_client` đúng tên thay vì đặt bí danh `ai_core_mock`. Dùng `AI_CORE_BASE_URL` để cấu hình URL AI Core; chuẩn hóa dấu `/` cuối URL và giữ lớp adapter để chuyển đổi dữ liệu AI Core trước khi Backend sử dụng.
 5. Cập nhật test Backend để thay thế hàm của `ai_core_client` trong lúc kiểm thử. Các công cụ mock/giả lập hiện có được giữ lại cho test hoặc chạy thử riêng, nhưng không còn là phương án thay thế trong luồng chạy ứng dụng chính.
 6. Cho phép cấu hình host/port lắng nghe bằng `BACKEND_HOST`/`BACKEND_PORT` và `AI_CORE_HOST`/`AI_CORE_PORT`. Backend mặc định vẫn bind `127.0.0.1` để giữ hành vi local; khi triển khai LAN có thể bind `0.0.0.0` và để Frontend gọi IP LAN. URL API phía client được cấu hình độc lập, nên có thể trỏ tới dịch vụ local, LAN hoặc domain cloud.
-7. Cập nhật `Face-ID-Frontend/testing_instruction.md`: hướng dẫn cấu hình URL/host/port local, LAN, cloud; cảnh báo `0.0.0.0` chỉ là địa chỉ bind và cloud cần HTTPS, xác thực API cùng firewall.
+7. Cập nhật hướng dẫn chạy: cấu hình URL/host/port local, LAN, cloud; cảnh báo `0.0.0.0` chỉ là địa chỉ bind và cloud cần HTTPS, xác thực API cùng firewall.
 
 Đây là bước đầu của quá trình chuyển sang dịch vụ thật; chưa phải triển khai đầy đủ cloud/offline. Các bước tiếp theo: kiểm thử tích hợp với AI Core và Backend thật qua local/LAN, triển khai HTTPS/xác thực cho API cloud, sau đó thiết kế lưu điểm danh offline và đồng bộ. Chưa chạy e2e hiện tại vì script có thao tác xóa dữ liệu trong PostgreSQL; cần cô lập DB test trước khi chạy an toàn.
 - 12/11/2026 (tiếp theo) — Dọn các công cụ mock/test cũ theo yêu cầu:
@@ -50,3 +50,8 @@ Các vấn đề cần làm rõ/hoàn thiện tiếp:
 5. Giữ các tài liệu hướng dẫn chạy ứng dụng/dịch vụ vì chúng còn nội dung cấu hình Backend, AI Core và môi trường local/LAN/cloud; chỉ xóa công cụ mock/test thực thi.
 
 Sau khi dọn, các file mock/test nêu trên không còn trong dự án. Chưa chạy kiểm thử tích hợp vì script kiểm thử cũ đã được xóa và cần bổ sung bộ pytest an toàn, dùng database test riêng trước khi kiểm tra các thao tác với PostgreSQL.
+- 12/11/2026 (tiếp theo) — Gộp hướng dẫn chạy và kiểm thử:
+1. Gộp hướng dẫn Backend và Frontend thành một file `docs/testing_instruction.md`, gồm chuẩn bị môi trường, chạy local, cấu hình biến môi trường, kết nối LAN/cloud và các bước kiểm tra thủ công.
+2. Xóa hai file hướng dẫn rời trong `Face-ID-Backend/` và `Face-ID-Frontend/` để tránh nội dung trùng lặp; giữ nguyên các tài liệu khác đang có trong `docs/`.
+3. Nêu rõ thông số PostgreSQL Docker Compose hiện tại (port host 5434, database `attendance_db`) khác mặc định trong `Face-ID-Backend/db.py`, và hướng dẫn đặt biến môi trường phù hợp thay vì trỏ nhầm database.
+4. Cập nhật README để dẫn tới tài liệu hợp nhất; ghi rõ test tự động chưa có sau khi xóa script cũ, đồng thời nhắc dùng database test riêng khi bổ sung pytest.

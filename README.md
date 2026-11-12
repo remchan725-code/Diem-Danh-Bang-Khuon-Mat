@@ -21,3 +21,6 @@ python Face-ID-Frontend/main_window.py
 ```
 
 ## Python 3.12+
+
+Xem [hướng dẫn cài đặt, chạy và kiểm thử](docs/testing_instruction.md) để cấu hình
+PostgreSQL, AI Core, Backend và Frontend trên local/LAN/cloud.
