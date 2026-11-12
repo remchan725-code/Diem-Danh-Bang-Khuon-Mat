@@ -34,6 +34,46 @@ Khi dùng PostgreSQL từ Compose, cấu hình Backend theo các giá trị trê
 PostgreSQL cài trực tiếp, dùng đúng host, port, database và thông tin đăng nhập
 của instance đó.
 
+### Dùng Supabase thay cho PostgreSQL local
+
+Supabase thay thế **dịch vụ PostgreSQL**, không thay thế FastAPI hoặc AI Core.
+Trong cấu hình hướng dẫn này, Frontend, Backend và AI Core vẫn chạy trên máy
+của bạn; Backend kết nối qua Internet tới PostgreSQL trên Supabase. Không cần
+khởi động Docker Compose khi dùng Supabase. Giữ file Compose để phát triển local
+hoặc kiểm thử khi không muốn dùng database cloud.
+
+1. Tạo project Supabase, bật pgvector và chạy schema theo
+   [hướng dẫn Supabase](SUPABASE_POSTGRESQL.md). Lấy host, port, database, user
+   và password từ **Supabase Dashboard → Connect**; dùng đúng thông tin được
+   dashboard cấp, không tự đoán. Nếu mạng không hỗ trợ IPv6, chọn phương thức
+   pooler phù hợp theo hướng dẫn Supabase.
+2. Trong cửa sổ PowerShell dùng để chạy Backend, đặt cấu hình Supabase. Thay
+   các giá trị mẫu bằng thông tin từ dashboard:
+
+   ```powershell
+   $env:DB_HOST = "<host từ Supabase>"
+   $env:DB_PORT = "<port từ Supabase>"
+   $env:DB_NAME = "<database từ Supabase>"
+   $env:DB_USER = "<user từ Supabase>"
+   $env:DB_PASSWORD = "<database password>"
+   $env:PGSSLMODE = "require"
+   ```
+
+   Đặt `FERNET_KEY` thành khóa Fernet cố định và lưu an toàn; không tạo khóa mới
+   mỗi lần chạy vì dữ liệu đã mã hóa cần đúng khóa cũ để giải mã. Cách tạo và
+   bảo quản khóa được hướng dẫn trong tài liệu Supabase.
+3. Khởi động AI Core như bình thường, rồi chạy Backend trong **chính cửa sổ đã
+   đặt các biến trên**:
+
+   ```powershell
+   .\.venv\Scripts\python.exe .\Face-ID-Backend\main.py
+   ```
+
+4. Kiểm tra Backend kết nối được database bằng endpoint liệt kê lớp như mục 5,
+   sau đó chạy Frontend như mục 2. Nếu Backend vẫn đang trỏ tới Compose, kiểm
+   tra lại `DB_*` trong cửa sổ Backend. Việc đổi cấu hình không chuyển dữ liệu
+   giữa PostgreSQL local và Supabase.
+
 ## 2. Chạy đầy đủ ứng dụng local
 
 Mỗi dịch vụ chạy trong một cửa sổ PowerShell riêng. Biến môi trường chỉ có hiệu
@@ -49,7 +89,9 @@ $env:AI_CORE_PORT="8001"
 
 ### Terminal 2 — Backend
 
-Ví dụ này dùng PostgreSQL Docker Compose ở trên:
+Ví dụ này dùng PostgreSQL Docker Compose ở trên. Nếu dùng Supabase, hãy đặt
+`DB_*` và `PGSSLMODE` theo mục **Dùng Supabase thay cho PostgreSQL local** thay
+cho các biến `DB_*` bên dưới.
 
 ```powershell
 $env:BACKEND_HOST="127.0.0.1"
@@ -87,6 +129,7 @@ Nếu Backend không kết nối được, kiểm tra Backend, PostgreSQL và
 | `AI_CORE_BASE_URL` | Backend | `http://127.0.0.1:8001` | URL AI Core API |
 | `AI_CORE_HOST` / `AI_CORE_PORT` | AI Core | `0.0.0.0` / `8001` | Host và cổng AI Core lắng nghe |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Backend | Mặc định trong `Face-ID-Backend/db.py` | Kết nối PostgreSQL |
+| `PGSSLMODE` | Backend/libpq | Tùy môi trường | Dùng `require` khi kết nối Supabase |
 | `APP_DEBUG` | Frontend | `true` | Hiện/ẩn lựa chọn camera và công cụ phát triển |
 
 Đặt các biến môi trường trước khi khởi động tiến trình tương ứng. Không ghi mật
