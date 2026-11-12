@@ -7,7 +7,7 @@ import psycopg2
 from psycopg2 import errors as pg_errors
 #Cần import thư viện psycopg2 và module errors để phân loại lỗi PostgreSQL cụ thể
  
-import ai_core_client as ai_core_mock
+import ai_core_client
 import crypto_utils
 from db import get_connection
  
@@ -45,7 +45,7 @@ async def dang_ky_sinh_vien(
     image_bytes = await anh.read()
  
     # Gọi AI Core: input ảnh raw (đúng contract — không crop trước ở đây)
-    ket_qua = ai_core_mock.register_face(image_bytes)
+    ket_qua = ai_core_client.register_face(image_bytes)
     vector = ket_qua["vector"]
  
     if ket_qua["confidence"] < 0.9:
@@ -88,7 +88,7 @@ def ghi_audit_log(cur, ca_hoc_id, sinh_vien_id, ket_qua_goc, khoang_cach, ly_do=
 def diem_danh(payload: DiemDanhRequest):
     ket_qua = []
     try:
-        faces = ai_core_mock.process_frame(payload.frame_base64)
+        faces = ai_core_client.process_frame(payload.frame_base64)
     except ValueError as e:
         # AI trả về lỗi dữ liệu ảnh (base64 hỏng, format sai)
         raise HTTPException(status_code=400, detail=f"Ảnh không hợp lệ: {e}")
@@ -298,8 +298,8 @@ if __name__ == "__main__":
     # được dù terminal đang ở thư mục gốc hay cd vào Face-ID-Backend
     uvicorn.run(
         "main:app",
-        host="127.0.0.1",
-        port=8000,
+        host=os.getenv("BACKEND_HOST", "127.0.0.1"),
+        port=int(os.getenv("BACKEND_PORT", "8000")),
         reload=True,
         app_dir=str(pathlib.Path(__file__).parent),
     )

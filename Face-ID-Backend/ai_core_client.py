@@ -4,7 +4,7 @@ import os
 import httpx
 
 
-AI_CORE_BASE_URL = os.getenv("AI_CORE_BASE_URL", "http://127.0.0.1:8001")
+AI_CORE_BASE_URL = os.getenv("AI_CORE_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
 
 
 def register_face(image_bytes: bytes) -> dict:

@@ -1,6 +1,7 @@
 import requests
+import os
  
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.getenv("BACKEND_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
 def dang_ky_sinh_vien(ma_sv: str, ho_ten: str, lop_id: int, image_bytes: bytes) -> dict:

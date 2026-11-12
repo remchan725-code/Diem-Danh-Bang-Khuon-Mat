@@ -4,10 +4,10 @@
 
 ```
 Diem-Danh-Bang-Khuon-Mat/
-├── Face-ID-Backend/     <- FastAPI server, PostgreSQL, AI mock
+├── Face-ID-Backend/     <- FastAPI server, PostgreSQL, AI Core client
 │   ├── main.py
 │   ├── db.py
-│   ├── ai_core_mock.py
+│   ├── ai_core_client.py
 │   ├── crypto_utils.py
 │   └── ...
 ├── Face-ID-Frontend/    <- Giao diện PyQt6 (file này đang ở đây)
@@ -85,28 +85,67 @@ lưu vector 512 chiều vào bảng `SinhVien`, sau đó dùng vector này để
 
 ---
 
-## Cách 3: Chạy Giao diện ở Chế độ Test (Không cần Backend)
+## Cấu hình gọi Backend và AI Core
 
-Dành cho khi bạn muốn chạy toàn bộ giao diện PyQt mà **chưa bật PostgreSQL hoặc FastAPI**.
+Ứng dụng chính chỉ sử dụng dịch vụ thật. Khi không kết nối được, giao diện báo lỗi
+thay vì tự chuyển sang dữ liệu giả lập. URL được cấu hình qua biến môi trường:
 
-### Cách 3a — Tự động chuyển khi mất kết nối
+| Biến | Đọc bởi | Mặc định | Mục đích |
+|---|---|---|---|
+| `BACKEND_API_BASE_URL` | Frontend | `http://127.0.0.1:8000` | Địa chỉ Backend API |
+| `BACKEND_HOST`, `BACKEND_PORT` | Backend | `127.0.0.1`, `8000` | Giao diện mạng và cổng Backend lắng nghe |
+| `AI_CORE_BASE_URL` | Backend | `http://127.0.0.1:8001` | Địa chỉ AI Core API |
+| `AI_CORE_HOST`, `AI_CORE_PORT` | AI Core | `0.0.0.0`, `8001` | Giao diện mạng và cổng AI Core lắng nghe |
+| `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT` | Backend | Cấu hình trong `Face-ID-Backend/db.py` | Thông tin kết nối PostgreSQL local/LAN/cloud |
 
-Chạy `main_window.py` bình thường. Khi app không thấy Backend, hộp thoại sẽ hỏi:
-> *"Bạn có muốn BẬT 'Chế độ Test (Mock Backend)' để chạy thử giao diện và camera ngay bây giờ không?"*
-
-Bấm **Yes** để tự động nạp dữ liệu lớp & ca học giả lập.
-
-### Cách 3b — Bật qua ô tích trên giao diện
-
-Trong mục **"⚙️ Cấu hình Nhà phát triển"**, tích vào ô:
-> ☑️ **Bật Test Mode (Chạy giả lập - Không cần Backend)**
-
-### Cách 3c — Bật trực tiếp từ dòng lệnh
+Ví dụ PowerShell từ thư mục gốc (mỗi dịch vụ chạy trong terminal riêng):
 
 ```powershell
-# Từ thư mục gốc:
-$env:APP_TEST_MODE="true"; .\.venv\Scripts\python.exe .\Face-ID-Frontend\main_window.py
+# Terminal Backend — chạy local trên cùng máy
+$env:BACKEND_HOST="127.0.0.1"
+$env:BACKEND_PORT="8000"
+$env:AI_CORE_BASE_URL="http://127.0.0.1:8001"
+$env:DB_HOST="127.0.0.1"
+# Chạy Backend:
+.\.venv\Scripts\python.exe .\Face-ID-Backend\main.py
+
+# Terminal Frontend — trỏ tới Backend local
+$env:BACKEND_API_BASE_URL="http://127.0.0.1:8000"
+.\.venv\Scripts\python.exe .\Face-ID-Frontend\main_window.py
 ```
+
+Với LAN, đặt các giá trị trên máy chủ tương ứng và dùng IP LAN có thể truy cập:
+
+```powershell
+# Terminal AI Core trên máy 192.168.1.21
+$env:AI_CORE_HOST="0.0.0.0"
+$env:AI_CORE_PORT="8001"
+.\.venv\Scripts\python.exe .\AI-Core\insightface_run.py
+
+# Terminal Backend trên máy chủ Backend
+$env:BACKEND_HOST="0.0.0.0"
+$env:BACKEND_PORT="8000"
+$env:AI_CORE_BASE_URL="http://192.168.1.21:8001"
+.\.venv\Scripts\python.exe .\Face-ID-Backend\main.py
+
+# Terminal Frontend trên máy trạm
+$env:BACKEND_API_BASE_URL="http://192.168.1.20:8000"
+.\.venv\Scripts\python.exe .\Face-ID-Frontend\main_window.py
+```
+
+Với cloud, đặt các biến môi trường tương ứng trong môi trường triển khai; URL
+client dùng domain HTTPS do nhóm triển khai cung cấp, ví dụ
+`BACKEND_API_BASE_URL=https://backend.example.com` và
+`AI_CORE_BASE_URL=https://ai.example.com`.
+
+Backend cần truy cập được AI Core và PostgreSQL. `AI_CORE_BASE_URL` phải được đặt
+trong môi trường chạy Backend; `BACKEND_API_BASE_URL` phải được đặt trong môi
+trường chạy Frontend. Các biến `DB_*` được cấu hình trong môi trường Backend để
+kết nối PostgreSQL. Không đưa thông tin xác thực hoặc khóa bí mật vào mã nguồn.
+`0.0.0.0` chỉ dùng làm địa chỉ bind trên máy chủ, không dùng làm URL từ Frontend.
+Khi triển khai Internet/cloud cần HTTPS, xác thực API và giới hạn firewall; các
+cơ chế này chưa được triển khai trong bước hiện tại. Mock chỉ còn là công cụ
+phát triển/kiểm thử, không tham gia luồng chạy của ứng dụng chính.
 
 ---
 

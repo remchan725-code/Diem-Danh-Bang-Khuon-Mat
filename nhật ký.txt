@@ -16,3 +16,29 @@ Một lần nữa, nhấn mạnh TỐI THIỂU nhằm đảm bảo thông tin si
 Có thể bồi thêm khả năng fallback sang mạng vô tuyến/không dây, nhưng cũng không chặn được việc sập dịch vụ bên server, cái này dù có mạng cũng down. Do đó Nam nghĩ phương án xử lý local trước rồi gửi lên sau khi server đã thông là ổn nhất.
 - 08/11/2026:
 Nam đề xuất sử dụng dịch vụ Supabase để chạy và lưu trữ backend server PostgreSQL vì tính tiện dụng của nó và khả năng mở rộng dễ dàng nếu quy mô server cần thêm tài nguyên
+- 12/11/2026:
+Bây giờ, phần GUI cũng đã có sơ bộ, nhóm xác định phần lõi của phần mềm cần có các chức năng và luồng chính sau:
+1. Quản lý dữ liệu nền: lớp học, sinh viên, khuôn mặt đã đăng ký và ca học.
+2. Đăng ký khuôn mặt sinh viên: nhận ảnh, gọi AI Core trích xuất vector 512 chiều, kiểm tra chất lượng rồi lưu thông tin/vector để phục vụ đối chiếu.
+3. Chọn lớp và ca học trước khi bắt đầu điểm danh.
+4. Điểm danh trực tiếp: lấy hình từ webcam, AI Core phát hiện khuôn mặt và trích xuất vector; Backend so khớp với dữ liệu sinh viên, trả về kết quả nhận diện hoặc từ chối khi không đủ giống/không tìm thấy.
+5. Ghi nhận kết quả: lưu lượt điểm danh hợp lệ vào lịch sử của ca, tránh ghi trùng một sinh viên trong cùng ca; đồng thời lưu nhật ký xác thực để tra cứu.
+6. Tổng kết ca học: hiển thị danh sách sinh viên đã điểm danh và thời gian điểm danh.
+
+Luồng nghiệp vụ cốt lõi: đăng ký khuôn mặt → chọn lớp/ca → camera nhận diện → xác minh và ghi điểm danh → xem tổng kết. Các màn hình và API cơ bản cho luồng này đã có trong dự án; cần tiếp tục kiểm thử và hoàn thiện với dữ liệu thực tế.
+
+Các vấn đề cần làm rõ/hoàn thiện tiếp:
+- Đề tài có mục tiêu chống gian lận sinh trắc học, nhưng luồng hiện tại chưa thể hiện kiểm tra người thật (liveness/chống ảnh hoặc video giả); cần xác định và triển khai đây là yêu cầu của phiên bản đầu hay giai đoạn sau.
+- Ngưỡng nhận diện hiện tại mới là giá trị khởi đầu, cần đánh giá bằng dữ liệu khuôn mặt thực tế trước khi sử dụng chính thức.
+- Phương án điểm danh offline đã được đề xuất ngày 01/11/2026 nhưng chưa thấy luồng đồng bộ hoàn chỉnh trong phần mềm: cần lưu dữ liệu tối thiểu và lượt điểm danh chờ đồng bộ tại máy, sau đó đồng bộ lên server khi có mạng.
+- Bảo vệ dữ liệu khuôn mặt: chỉ lưu dữ liệu cần thiết, mã hóa vector lưu trữ phù hợp và không lưu ảnh khuôn mặt thô nếu không cần thiết. Cần phân biệt vector phục vụ truy vấn và vector mã hóa trong thiết kế hiện có.
+- 12/11/2026 (tiếp theo) — Bắt đầu loại bỏ giả lập khỏi luồng chạy chính, theo từng bước:
+1. Gỡ `MockBackend` khỏi giao diện chính: màn hình chọn lớp/ca, điểm danh trực tiếp và tổng kết giờ chỉ lấy dữ liệu qua Backend API thật. Xóa dữ liệu sinh viên/lớp/ca mẫu và kết quả điểm danh ngẫu nhiên khỏi `main_window.py`.
+2. Bỏ cơ chế tự chuyển sang mock khi Backend mất kết nối. Giao diện hiển thị lỗi kết nối, xóa danh sách lớp/ca cũ để tránh người dùng vô tình thao tác với dữ liệu lỗi thời; người dùng có thể thử lại sau khi dịch vụ hoạt động.
+3. Mở cấu hình địa chỉ Backend cho local, LAN hoặc cloud bằng biến môi trường `BACKEND_API_BASE_URL` (mặc định `http://127.0.0.1:8000`). Luồng đăng ký sinh viên, lấy lớp/ca, gửi frame điểm danh và lấy tổng kết cùng dùng địa chỉ này.
+4. Backend gọi module `ai_core_client` đúng tên thay vì đặt bí danh `ai_core_mock`. Dùng `AI_CORE_BASE_URL` để cấu hình URL AI Core; chuẩn hóa dấu `/` cuối URL và giữ lớp adapter để chuyển đổi dữ liệu AI Core trước khi Backend sử dụng.
+5. Cập nhật test Backend để thay thế hàm của `ai_core_client` trong lúc kiểm thử. Các công cụ mock/giả lập hiện có được giữ lại cho test hoặc chạy thử riêng, nhưng không còn là phương án thay thế trong luồng chạy ứng dụng chính.
+6. Cho phép cấu hình host/port lắng nghe bằng `BACKEND_HOST`/`BACKEND_PORT` và `AI_CORE_HOST`/`AI_CORE_PORT`. Backend mặc định vẫn bind `127.0.0.1` để giữ hành vi local; khi triển khai LAN có thể bind `0.0.0.0` và để Frontend gọi IP LAN. URL API phía client được cấu hình độc lập, nên có thể trỏ tới dịch vụ local, LAN hoặc domain cloud.
+7. Cập nhật `Face-ID-Frontend/testing_instruction.md`: hướng dẫn cấu hình URL/host/port local, LAN, cloud; cảnh báo `0.0.0.0` chỉ là địa chỉ bind và cloud cần HTTPS, xác thực API cùng firewall.
+
+Đây là bước đầu của quá trình chuyển sang dịch vụ thật; chưa phải triển khai đầy đủ cloud/offline. Các bước tiếp theo: kiểm thử tích hợp với AI Core và Backend thật qua local/LAN, triển khai HTTPS/xác thực cho API cloud, sau đó thiết kế lưu điểm danh offline và đồng bộ. Chưa chạy e2e hiện tại vì script có thao tác xóa dữ liệu trong PostgreSQL; cần cô lập DB test trước khi chạy an toàn.

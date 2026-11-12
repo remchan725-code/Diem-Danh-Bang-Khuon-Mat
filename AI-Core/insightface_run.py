@@ -110,8 +110,8 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     uvicorn.run(
         "insightface_run:app",
-        host="0.0.0.0",
-        port=8001,
+        host=os.getenv("AI_CORE_HOST", "0.0.0.0"),
+        port=int(os.getenv("AI_CORE_PORT", "8001")),
         reload=True,
         app_dir=current_dir
     )

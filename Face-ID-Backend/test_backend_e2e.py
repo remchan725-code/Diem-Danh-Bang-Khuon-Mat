@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from fastapi.testclient import TestClient
  
 import main
-import ai_core_mock
+import ai_core_client
 from db import get_connection
  
  
@@ -43,7 +43,7 @@ def chay_test():
  
     # --- Bước 1: đăng ký 1 sinh viên, cố định vector để test kiểm soát được ---
     vector_that = vector_don_vi(np.random.normal(size=512))
-    ai_core_mock.register_face = lambda image_bytes: {
+    ai_core_client.register_face = lambda image_bytes: {
         "vector": vector_that, "confidence": 0.99, "bbox": [0, 0, 100, 100]
     }
  
@@ -57,7 +57,7 @@ def chay_test():
  
     # --- Bước 2: điểm danh với khuôn mặt CÙNG người (vector gần giống, nhiễu nhỏ) ---
     vector_giong = vector_don_vi(np.array(vector_that) + np.random.normal(scale=0.02, size=512))
-    ai_core_mock.process_frame = lambda b64: [
+    ai_core_client.process_frame = lambda b64: [
         {"vector": vector_giong, "confidence": 0.95, "bbox": [10, 10, 110, 110]}
     ]
  
@@ -68,7 +68,7 @@ def chay_test():
  
     # --- Bước 3: điểm danh với khuôn mặt LẠ (vector hoàn toàn khác, không liên quan) ---
     vector_la = vector_don_vi(np.random.normal(size=512))
-    ai_core_mock.process_frame = lambda b64: [
+    ai_core_client.process_frame = lambda b64: [
         {"vector": vector_la, "confidence": 0.9, "bbox": [10, 10, 110, 110]}
     ]
  
