@@ -5,7 +5,7 @@ AI_CORE_BASE_URL = "http://localhost:8001"  # đổi theo địa chỉ thật kh
  
 def register_face(image_bytes: bytes) -> dict:
     """Gọi POST /api/v1/register-face của A.
-    Trả về dict PHẲNG {"vector", "confidence", "bbox"} — đúng format ai_core_mock.py."""
+    Trả về dict phẳng gồm vector, confidence và bbox."""
     response = httpx.post(
         f"{AI_CORE_BASE_URL}/api/v1/register-face",
         files={"file": ("anh.jpg", image_bytes, "image/jpeg")},
@@ -29,7 +29,7 @@ def register_face(image_bytes: bytes) -> dict:
  
 def process_frame(base64_image: str) -> list:
     """Gọi POST /api/v1/process-frame của A.
-    Trả về MẢNG TRẦN [{"vector", "confidence", "bbox"}, ...] — đúng format ai_core_mock.py."""
+    Trả về danh sách các khuôn mặt với vector, confidence và bbox."""
     response = httpx.post(
         f"{AI_CORE_BASE_URL}/api/v1/process-frame",
         json={"image_base64": base64_image},

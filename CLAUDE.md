@@ -87,7 +87,6 @@ Two-person NCKH research project: an automated face recognition attendance syste
 - `main.py` - 5 API endpoints
 - `ai_core_client.py` - adapter from A's response (`faces: [{embedding: ...}]`) to the flat format `main.py` expects
 - `api_client.py`, `camera_worker.py`, `main_window.py` - UI layer (3 screens: `ManHinhBatDauCa`, `ManHinhDiemDanhLive`, `ManHinhTongKet`)
-- `seed_and_test.py`, `ai_core_mock.py`, `test_backend_e2e.py` - **developer tooling, not production code.** Don't ship or "clean up" these into production paths.
 
 ## Project-specific rules
 
@@ -105,8 +104,8 @@ Two-person NCKH research project: an automated face recognition attendance syste
 - Never run camera/network calls on the main Qt thread. Use `QThread` + `pyqtSignal` (as `camera_worker.py` does).
 
 **Testing / verification**
-- Known reference values from the e2e test: stranger ≈ 0.96 cosine distance (rejected), matching student ≈ 0.08. A change that shifts these significantly is a red flag - report it.
-- New tests go in pytest format (migration of `test_backend_e2e.py` is in progress).
+- Previously established reference values: stranger ≈ 0.96 cosine distance (rejected), matching student ≈ 0.08. A change that shifts these significantly is a red flag - report it.
+- New tests go in pytest format.
 - DB changes should be verified against a real PostgreSQL instance via Docker Compose, not just by reading the SQL.
 
 **Environment**
@@ -126,7 +125,6 @@ The owner is learning while building, so the goal is understanding, not just a w
 
 - Confirm Docker runs correctly on the Windows dev machine
 - Resolve `embedding` vs `vector` field name with Member A
-- Convert `test_backend_e2e.py` to pytest
 - Login screen wireframes
 - Test `CameraWorker` with a live camera feed
 

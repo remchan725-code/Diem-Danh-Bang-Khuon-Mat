@@ -42,3 +42,11 @@ Các vấn đề cần làm rõ/hoàn thiện tiếp:
 7. Cập nhật `Face-ID-Frontend/testing_instruction.md`: hướng dẫn cấu hình URL/host/port local, LAN, cloud; cảnh báo `0.0.0.0` chỉ là địa chỉ bind và cloud cần HTTPS, xác thực API cùng firewall.
 
 Đây là bước đầu của quá trình chuyển sang dịch vụ thật; chưa phải triển khai đầy đủ cloud/offline. Các bước tiếp theo: kiểm thử tích hợp với AI Core và Backend thật qua local/LAN, triển khai HTTPS/xác thực cho API cloud, sau đó thiết kế lưu điểm danh offline và đồng bộ. Chưa chạy e2e hiện tại vì script có thao tác xóa dữ liệu trong PostgreSQL; cần cô lập DB test trước khi chạy an toàn.
+- 12/11/2026 (tiếp theo) — Dọn các công cụ mock/test cũ theo yêu cầu:
+1. Xóa `Face-ID-Backend/ai_core_mock.py`, vì ứng dụng chính đã gọi AI Core thật qua `ai_core_client`.
+2. Xóa `Face-ID-Backend/test_backend_e2e.py`, là script E2E cũ chưa được chuyển thành pytest và có thao tác xóa dữ liệu trong PostgreSQL dùng chung.
+3. Xóa `seed_and_test.py`, script seed dữ liệu cũ có lệnh DROP các bảng, không phù hợp để giữ trong luồng dự án hiện tại.
+4. Chỉnh mô tả trong `AI-Core/ai_core_client.py`, bỏ tham chiếu tới mock đã xóa; cập nhật hướng dẫn Backend và `CLAUDE.md` để không còn chỉ dẫn tới các script đã xóa.
+5. Giữ các tài liệu hướng dẫn chạy ứng dụng/dịch vụ vì chúng còn nội dung cấu hình Backend, AI Core và môi trường local/LAN/cloud; chỉ xóa công cụ mock/test thực thi.
+
+Sau khi dọn, các file mock/test nêu trên không còn trong dự án. Chưa chạy kiểm thử tích hợp vì script kiểm thử cũ đã được xóa và cần bổ sung bộ pytest an toàn, dùng database test riêng trước khi kiểm tra các thao tác với PostgreSQL.
