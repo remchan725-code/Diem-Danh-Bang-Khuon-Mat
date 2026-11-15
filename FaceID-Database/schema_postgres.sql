@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS CaHoc (
     ngay DATE NOT NULL,
     gio_bat_dau TIME NOT NULL,
     gio_ket_thuc TIME,
+    hinh_thuc TEXT NOT NULL DEFAULT 'tai_lop' CHECK (hinh_thuc IN ('tai_lop', 'truc_tuyen')),
+    loai_ca TEXT NOT NULL DEFAULT 'lich_goc' CHECK (loai_ca IN ('lich_goc', 'hoc_bu')),
+    ca_goc_id INT REFERENCES CaHoc(id),
     CONSTRAINT uq_ca_hoc UNIQUE (lop_id, ngay, gio_bat_dau),
     CONSTRAINT check_time CHECK (gio_ket_thuc IS NULL OR gio_ket_thuc > gio_bat_dau)
 );
@@ -35,8 +38,45 @@ CREATE TABLE IF NOT EXISTS LichSuDiemDanh (
     ca_hoc_id INT NOT NULL REFERENCES CaHoc(id),
     thoi_gian TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     trang_thai TEXT NOT NULL CHECK (trang_thai IN ('co_mat', 'tre', 'vang')),
+    dau_gio BOOLEAN NOT NULL DEFAULT FALSE,
+    dau_gio_luc TIMESTAMPTZ,
+    cuoi_gio BOOLEAN NOT NULL DEFAULT FALSE,
+    cuoi_gio_luc TIMESTAMPTZ,
     CONSTRAINT UQ_diemdanh UNIQUE (ca_hoc_id, sinh_vien_id),
     is_synced BOOLEAN DEFAULT FALSE
+);
+
+-- Additive migration for databases created from earlier versions of this schema.
+ALTER TABLE CaHoc ADD COLUMN IF NOT EXISTS hinh_thuc TEXT NOT NULL DEFAULT 'tai_lop';
+ALTER TABLE CaHoc ADD COLUMN IF NOT EXISTS loai_ca TEXT NOT NULL DEFAULT 'lich_goc';
+ALTER TABLE CaHoc ADD COLUMN IF NOT EXISTS ca_goc_id INT REFERENCES CaHoc(id);
+ALTER TABLE LichSuDiemDanh ADD COLUMN IF NOT EXISTS dau_gio BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE LichSuDiemDanh ADD COLUMN IF NOT EXISTS dau_gio_luc TIMESTAMPTZ;
+ALTER TABLE LichSuDiemDanh ADD COLUMN IF NOT EXISTS cuoi_gio BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE LichSuDiemDanh ADD COLUMN IF NOT EXISTS cuoi_gio_luc TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS DotDiemDanh (
+    id SERIAL PRIMARY KEY,
+    ca_hoc_id INT NOT NULL REFERENCES CaHoc(id),
+    loai TEXT NOT NULL CHECK (loai IN ('dau_gio', 'cuoi_gio')),
+    trang_thai TEXT NOT NULL DEFAULT 'dong' CHECK (trang_thai IN ('mo', 'dong')),
+    mo_luc TIMESTAMPTZ,
+    dong_luc TIMESTAMPTZ,
+    giang_vien_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_dot_diem_danh UNIQUE (ca_hoc_id, loai)
+);
+
+CREATE TABLE IF NOT EXISTS HangChoDiemDanh (
+    id BIGSERIAL PRIMARY KEY,
+    dot_diem_danh_id INT NOT NULL REFERENCES DotDiemDanh(id),
+    sinh_vien_id INT NOT NULL REFERENCES SinhVien(id),
+    request_id UUID NOT NULL UNIQUE,
+    trang_thai TEXT NOT NULL DEFAULT 'cho_xac_nhan'
+        CHECK (trang_thai IN ('cho_xac_nhan', 'chap_nhan', 'tu_choi')),
+    queued_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    quyet_dinh_luc TIMESTAMPTZ,
+    CONSTRAINT uq_hang_cho_dot_sinh_vien UNIQUE (dot_diem_danh_id, sinh_vien_id)
 );
 
 CREATE TABLE IF NOT EXISTS NhatKyXacThuc (
@@ -68,6 +108,7 @@ CREATE INDEX IF NOT EXISTS idx_diem_danh_sinh_vien ON LichSuDiemDanh(sinh_vien_i
 CREATE INDEX IF NOT EXISTS idx_diem_danh_ca_hoc ON LichSuDiemDanh(ca_hoc_id);
 CREATE INDEX IF NOT EXISTS idx_nhat_ky_ca_hoc_thoi_gian ON NhatKyXacThuc(ca_hoc_id, thoi_gian DESC);
 CREATE INDEX IF NOT EXISTS idx_nhat_ky_sinh_vien_thoi_gian ON NhatKyXacThuc(sinh_vien_id, thoi_gian DESC);
+CREATE INDEX IF NOT EXISTS idx_hang_cho_dot_trang_thai ON HangChoDiemDanh(dot_diem_danh_id, trang_thai, queued_at);
 
 COMMENT ON COLUMN SinhVien.vector_khuon_mat IS
     'Encrypted biometric template only; never persist raw face images in this column.';

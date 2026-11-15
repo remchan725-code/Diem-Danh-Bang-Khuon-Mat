@@ -265,6 +265,7 @@ class ManHinhDiemDanhLive(QWidget):
         self.ca_hoc_id = None
         self.camera_id = 0
         self.cac_khuon_mat_hien_tai = []
+        self.loai_dot = "dau_gio"
 
         layout = QVBoxLayout(self)
 
@@ -275,6 +276,26 @@ class ManHinhDiemDanhLive(QWidget):
         self.nhan_ket_qua = QLabel("")
         layout.addWidget(self.nhan_ket_qua)
 
+        hang_nut = QHBoxLayout()
+        self.combo_dot = QComboBox()
+        self.combo_dot.addItem("Đầu giờ", "dau_gio")
+        self.combo_dot.addItem("Cuối giờ", "cuoi_gio")
+        self.combo_dot.currentIndexChanged.connect(self.chon_dot)
+        hang_nut.addWidget(self.combo_dot)
+
+        nut_mo_dot = QPushButton("Mở lượt điểm danh")
+        nut_mo_dot.clicked.connect(self.mo_dot)
+        hang_nut.addWidget(nut_mo_dot)
+
+        nut_xem_hang_cho = QPushButton("Xem hàng chờ")
+        nut_xem_hang_cho.clicked.connect(self.xem_hang_cho)
+        hang_nut.addWidget(nut_xem_hang_cho)
+
+        nut_xac_nhan = QPushButton("Xác nhận và đóng lượt")
+        nut_xac_nhan.clicked.connect(self.xac_nhan_dot)
+        hang_nut.addWidget(nut_xac_nhan)
+        layout.addLayout(hang_nut)
+
         nut_ket_thuc = QPushButton("Kết thúc ca")
         nut_ket_thuc.clicked.connect(self.ket_thuc)
         layout.addWidget(nut_ket_thuc)
@@ -282,9 +303,12 @@ class ManHinhDiemDanhLive(QWidget):
     def vao_man_hinh(self, ca_hoc_id: int, camera_id: int = 0):
         self.ca_hoc_id = ca_hoc_id
         self.camera_id = camera_id
+        self.loai_dot = self.combo_dot.currentData()
         self.nhan_ket_qua.setText("")
         self.worker = CameraWorker(
-            ca_hoc_id, api_client.goi_diem_danh, camera_id=self.camera_id
+            ca_hoc_id,
+            lambda session_id, frame: api_client.goi_diem_danh(session_id, frame, self.loai_dot),
+            camera_id=self.camera_id,
         )
         self.worker.khung_hinh_moi.connect(self.cap_nhat_khung_hinh)
         self.worker.ket_qua_diem_danh.connect(self.cap_nhat_ket_qua)
@@ -325,6 +349,31 @@ class ManHinhDiemDanhLive(QWidget):
                 for r in ket_qua["ket_qua"] if r["nhan_dien"]]
         if dong:
             self.nhan_ket_qua.setText("Vừa nhận diện: " + ", ".join(dong))
+
+    def chon_dot(self):
+        self.loai_dot = self.combo_dot.currentData()
+
+    def mo_dot(self):
+        try:
+            api_client.mo_dot_diem_danh(self.ca_hoc_id, self.loai_dot)
+            self.nhan_ket_qua.setText(f"Đã mở lượt {self.combo_dot.currentText().lower()}.")
+        except Exception as e:
+            QMessageBox.critical(self, "Không thể mở lượt", str(e))
+
+    def xem_hang_cho(self):
+        try:
+            danh_sach = api_client.lay_hang_cho_diem_danh(self.ca_hoc_id, self.loai_dot)
+            noi_dung = "\n".join(f"{sv['ma_sv']} - {sv['ho_ten']}" for sv in danh_sach)
+            QMessageBox.information(self, "Hàng chờ điểm danh", noi_dung or "Chưa có sinh viên trong hàng chờ.")
+        except Exception as e:
+            QMessageBox.critical(self, "Không tải được hàng chờ", str(e))
+
+    def xac_nhan_dot(self):
+        try:
+            ket_qua = api_client.xac_nhan_dot_diem_danh(self.ca_hoc_id, self.loai_dot)
+            self.nhan_ket_qua.setText(f"Đã xác nhận {ket_qua['xac_nhan']} sinh viên trong lượt {self.combo_dot.currentText().lower()}.")
+        except Exception as e:
+            QMessageBox.critical(self, "Không thể xác nhận lượt", str(e))
 
     def ket_thuc(self):
         if self.worker:

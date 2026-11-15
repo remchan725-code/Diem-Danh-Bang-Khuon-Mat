@@ -86,3 +86,25 @@ Giới hạn: lõi chưa được nối vào `main_window.py`, chưa có endpoin
 3. Tách `schema_postgres.sql` và `docker-compose.yml` sang `FaceID-Database`.
 4. Đặt AI service trong `FaceID-Backend/ai_service/`. Để giữ hành vi hiện tại, FastAPI vẫn chạy cổng 8000 và AI service vẫn là process riêng ở cổng 8001.
 5. Cập nhật các đường dẫn chạy, tài liệu Supabase, README, test import path và hướng dẫn dự án.
+
+- 15/11/2026 — Bổ sung quản lý danh tính sinh viên bằng template khuôn mặt:
+1. Cập nhật đăng ký sinh viên để nhận từ 2 đến 5 ảnh khuôn mặt. Mỗi ảnh phải có đúng một khuôn mặt, đạt confidence phát hiện tối thiểu 0.9; các embedding hợp lệ được lấy trung bình, chuẩn hóa và lưu dưới dạng vector phục vụ so khớp cùng bản template mã hóa Fernet.
+2. Cập nhật AI Core endpoint `/api/v1/register-face`: trả về `face_count` thực tế và từ chối ảnh không có đúng một khuôn mặt. Quy tắc này chỉ áp dụng cho ảnh đăng ký/cập nhật hồ sơ, nhằm tránh gắn nhầm danh tính khi ảnh có nhiều người.
+3. Giữ nguyên luồng điểm danh nhiều khuôn mặt: endpoint `/api/v1/process-frame` vẫn trả về toàn bộ khuôn mặt xuất hiện trong frame, Backend tiếp tục so khớp và xử lý từng khuôn mặt.
+4. Thêm endpoint `PUT /api/v1/sinh-vien/{sinh_vien_id}/khuon-mat` để cập nhật template bằng 2 đến 5 ảnh mới; ghi `vector_version` và `vector_updated_at` để theo dõi phiên bản template.
+5. Thêm endpoint `DELETE /api/v1/sinh-vien/{sinh_vien_id}`. Hệ thống chỉ cho phép xóa vật lý khi sinh viên chưa có lịch sử điểm danh hoặc nhật ký xác thực; nếu đã có thì trả về lỗi 409 để bảo toàn dữ liệu kiểm toán.
+6. Đã kiểm tra định dạng thay đổi bằng `git diff --check`; chưa chạy kiểm thử tích hợp với AI Core và PostgreSQL/Supabase.
+
+Bổ sung điểm danh hai lượt và hàng chờ xác nhận giảng viên:
+1. Mở rộng `CaHoc` với `hinh_thuc` (`tai_lop` hoặc `truc_tuyen`), `loai_ca` (`lich_goc` hoặc `hoc_bu`) và `ca_goc_id` để liên kết buổi học bù với ca ban đầu.
+2. Mở rộng `LichSuDiemDanh` bằng hai mốc Boolean `dau_gio`, `cuoi_gio` và các thời điểm tương ứng. Một bản ghi chỉ được cập nhật thành kết quả chính thức khi giảng viên xác nhận lượt điểm danh.
+3. Thêm bảng `DotDiemDanh` để quản lý riêng lượt đầu giờ/cuối giờ của từng ca học, gồm trạng thái mở/đóng, thời điểm mở/đóng và định danh giảng viên mở lượt.
+4. Thêm bảng `HangChoDiemDanh` cho sinh viên đã được nhận diện hợp lệ nhưng đang chờ xác nhận. Ràng buộc unique theo lượt và sinh viên ngăn một sinh viên xuất hiện lặp trong cùng lượt.
+5. Chuyển API `/api/v1/diem-danh` sang luồng đưa kết quả nhận diện hợp lệ vào hàng chờ thay vì ghi ngay vào `LichSuDiemDanh`. Backend chỉ tìm ứng viên trong lớp của ca học đang điểm danh.
+6. Bổ sung API mở lượt, xem hàng chờ và xác nhận/đóng lượt. Khi xác nhận, Backend cập nhật `dau_gio` hoặc `cuoi_gio` cho các sinh viên có trong hàng chờ.
+7. Bổ sung các hàm gọi API tương ứng trong `FaceID-Client/api_client.py`; giao diện PyQt có chọn lượt đầu/cuối giờ, nút mở lượt, xem hàng chờ và xác nhận lượt.
+8. Schema có các lệnh `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` để bổ sung các cột mới cho database đã tạo từ phiên bản cũ. Cần chạy lại schema/migration trên PostgreSQL hoặc Supabase trước khi sử dụng API mới.
+
+Trạng thái kiểm thử: chưa chạy kiểm thử tích hợp. Cần kiểm tra luồng mở lượt -> nhận diện -> vào hàng chờ -> xác nhận cho cả đầu giờ và cuối giờ trên database test trước khi dùng dữ liệu thật.
+
+

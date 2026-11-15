@@ -44,7 +44,7 @@ def format_face_object(face) -> dict:
 async def register_face(file: UploadFile = File(...)):
     """
     Endpoint nhận file ảnh nhị phân (UploadFile) từ form đăng ký sinh viên.
-    Tự động cắt mặt, căn chỉnh và trả về 1 Vector 512 chiều tốt nhất.
+    Yêu cầu ảnh có đúng một khuôn mặt và trả về embedding của khuôn mặt đó.
     """
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
@@ -56,22 +56,19 @@ async def register_face(file: UploadFile = File(...)):
     # Tiến hành phát hiện và trích xuất
     faces = app_ai.get(img)
 
-    if len(faces) == 0:
+    if len(faces) != 1:
         return {
             "success": False,
-            "message": "Không tìm thấy khuôn mặt nào trong ảnh",
-            "face_count": 0,
+            "message": "Ảnh phải chứa đúng một khuôn mặt",
+            "face_count": len(faces),
             "faces": []
         }
 
-    # Trường hợp ảnh thẻ có nhiễu nhiều mặt, chọn mặt có score cao nhất
-    best_face = max(faces, key=lambda x: x.det_score)
-
     return {
         "success": True,
-        "message": "Trích xuất vector ảnh gốc thành công",
+        "message": "Trích xuất vector thành công",
         "face_count": 1,
-        "faces": [format_face_object(best_face)]
+        "faces": [format_face_object(faces[0])]
     }
 
 @app.post("/api/v1/process-frame", summary="Xử lý frame hình webcam thời gian thực")

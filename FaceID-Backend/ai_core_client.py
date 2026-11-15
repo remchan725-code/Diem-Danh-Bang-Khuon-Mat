@@ -17,13 +17,17 @@ def register_face(image_bytes: bytes) -> dict:
     data = response.json()
 
     if not data.get("faces"):
-        return {"vector": [], "confidence": 0.0, "bbox": None}
+        return {
+            "vector": [], "confidence": 0.0, "bbox": None,
+            "face_count": data.get("face_count", 0),
+        }
 
     face = data["faces"][0]
     return {
         "vector": face["embedding"],
         "confidence": face["confidence"],
         "bbox": face["bbox"],
+        "face_count": data.get("face_count", 1),
     }
 
 
