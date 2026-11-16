@@ -107,4 +107,18 @@ Bổ sung điểm danh hai lượt và hàng chờ xác nhận giảng viên:
 
 Trạng thái kiểm thử: chưa chạy kiểm thử tích hợp. Cần kiểm tra luồng mở lượt -> nhận diện -> vào hàng chờ -> xác nhận cho cả đầu giờ và cuối giờ trên database test trước khi dùng dữ liệu thật.
 
+- 16/11/2026 — Chuyển trách nhiệm đăng ký sinh viên khỏi ứng dụng Client:
+1. Gỡ màn hình/nút đăng ký khuôn mặt khỏi ứng dụng PyQt trên máy điểm danh; Client tập trung vào chọn ca, nhận diện và xem kết quả.
+2. Dự kiến web quản trị sẽ đảm nhiệm tạo/cập nhật/xóa hồ sơ sinh viên và gửi 2–5 ảnh qua Backend để tạo/cập nhật template.
+3. Giữ các endpoint đăng ký/cập nhật template trong Backend để web quản trị tích hợp sau; không còn hàm gọi đăng ký hoặc worker chụp ảnh phục vụ màn hình đăng ký trong Client.
+4. Hiện web quản trị chưa được tích hợp, nên chưa có giao diện đăng ký sinh viên trong ứng dụng; cần hoàn thiện web và xác thực/phân quyền trước khi vận hành luồng này.
+
+- 16/11/2026 — Bàn giao trạng thái hiện tại và hướng tiếp tục cho AI Agent:
+1. Trạng thái code: Client PyQt vẫn có chọn lớp/ca, nhận diện qua camera, chọn lượt đầu/cuối giờ, mở lượt, xem hàng chờ, xác nhận lượt và xem tổng kết. Màn hình/API đăng ký phía Client đã được gỡ trong working tree hiện tại. FastAPI và AI service InsightFace vẫn là hai process riêng (cổng 8000 và 8001).
+2. Backend hiện có API đăng ký sinh viên nhận 2–5 ảnh, tạo embedding trung bình đã chuẩn hóa, ghi `vector_tho`, template Fernet, `vector_version` và thời điểm cập nhật; có API cập nhật template và xóa hồ sơ có điều kiện. AI service đăng ký yêu cầu đúng một khuôn mặt mỗi ảnh. Các API này chưa có web tích hợp và chưa được kiểm thử tích hợp.
+3. Luồng điểm danh hiện có schema/API cho `DotDiemDanh` và `HangChoDiemDanh`: mở lượt -> nhận diện -> đưa sinh viên vào hàng chờ -> giảng viên xác nhận để cập nhật `LichSuDiemDanh`. Schema PostgreSQL đã có cột/bảng tương ứng và lệnh bổ sung một số cột cho database cũ; cần xác nhận migration trên database thử nghiệm trước khi sử dụng.
+4. Kiểm tra gần nhất sau khi gỡ luồng đăng ký Client: 6 unit tests hiện có đều đạt, import các module Client thành công, không còn tham chiếu đăng ký trong mã `FaceID-Client`, `git diff --check` sạch. Các unit tests này chỉ kiểm tra lõi điểm danh local, không xác nhận API/AI/PostgreSQL. Thay đổi gỡ đăng ký và cập nhật nhật ký vẫn chưa commit; kiểm tra `git status` và giữ nguyên các thay đổi hiện có khi tiếp tục.
+5. Việc nên làm tiếp theo: (a) viết kiểm thử tích hợp trên database test cho đăng ký nhiều ảnh, mở lượt -> nhận diện -> xác nhận ở cả hai loại lượt, xử lý request lặp và trường hợp lượt đóng; (b) sửa/kiểm thử lỗi hàng chờ trùng: `ON CONFLICT DO NOTHING` không đi vào nhánh `UniqueViolation`, nên API có thể trả nhầm trạng thái; rà soát đồng thời race giữa nhận diện và đóng lượt; (c) thống nhất nghiệp vụ trạng thái điểm danh khi chỉ có một trong hai lượt, gồm `co_mat`/`tre`/`vang`; (d) thiết kế và triển khai xác thực/phân quyền cho API trước khi đưa lên mạng, xác minh giảng viên được gán đúng ca/lớp và không tin `giang_vien_id` do client tự gửi; (e) sau đó mới nối web quản trị để gửi nhiều ảnh qua Backend, quản lý hồ sơ/lớp/ca theo quyền và không để secret Supabase trong trình duyệt.
+6. Trước khi sửa tiếp, AI Agent cần đọc `git status`, commit gần nhất, `FaceID-Backend/main.py`, `FaceID-Backend/ai_core_client.py`, `FaceID-Database/schema_postgres.sql` và các thay đổi Client hiện tại; không chạy migration trên database thật, không stage/commit nếu chưa được yêu cầu. Chưa có triển khai web quản trị hoặc cơ chế xác thực/phân quyền trong code hiện tại.
+
 
