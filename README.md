@@ -8,10 +8,11 @@ Dự án NCKH Khoa CNTT&TT HVQLGD
 ## Cấu trúc dự án
 
 ```text
-FaceID-Client/       Ứng dụng PyQt trên máy điểm danh
-FaceID-Backend/      FastAPI và AI service InsightFace
-FaceID-Database/     Schema PostgreSQL và Docker Compose
-docs/                Hướng dẫn chạy, Supabase và kiểm thử
+FaceID-Administration/ Web quản trị (React + TypeScript + Supabase RLS)
+FaceID-Client/         Ứng dụng PyQt trên máy điểm danh
+FaceID-Backend/        FastAPI và AI service InsightFace
+FaceID-Database/       Schema PostgreSQL và Docker Compose
+docs/                  Hướng dẫn chạy, Supabase và kiểm thử
 ```
 
 AI service được đặt trong `FaceID-Backend/ai_service/`, nhưng vẫn chạy process
