@@ -42,9 +42,6 @@ Do chưa dựng chạy kiểm thử đồng bộ được phần Backend và AI 
 2. Kiểm thử xuyên suốt từ Web quản trị (đăng ký 2–5 ảnh) sang máy quét PyQt (mở lượt đầu/cuối giờ → quét khuôn mặt → hàng chờ → giảng viên xác nhận), đồng thời xử lý các trường hợp biên phía Backend (trùng sinh viên trong hàng chờ, xung đột khi vừa nhận diện vừa đóng lượt).
 3. Bổ sung xác thực JWT từ Supabase cho FastAPI và bắt đầu nghiên cứu ghép bước kiểm tra người thật (Liveness / Anti-spoofing) vào AI Core.
 
-## 5. Vấn đề còn vướng mắc & xin ý kiến Cô
-
-1. Chuẩn bị bước vào giai đoạn chạy test thực tế Backend FastAPI + AI Core tuần tới, nhóm vẫn còn băn khoăn về dữ liệu đầu vào: ngoài ảnh các thành viên trong nhóm, để đánh giá ngưỡng nhận diện (cosine distance) và đo độ trễ với quy mô một lớp học (~40–60 sinh viên), Cô thấy nhóm nên dùng thêm bộ dữ liệu khuôn mặt công khai (như LFW) hay nên nhờ các bạn cùng lớp chụp mẫu thử nghiệm thực tế ạ?
 
 
 Trên đây là báo cáo tiến độ thực tế đợt này của nhóm em. Rất mong nhận được góp ý và định hướng thêm của Cô ạ.
