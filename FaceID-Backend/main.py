@@ -2,6 +2,7 @@ import os
 import uuid
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Literal
 import psycopg2
@@ -13,6 +14,23 @@ import crypto_utils
 from db import get_connection
  
 app = FastAPI(title="He thong diem danh - Backend API")
+
+_default_origins = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
+_raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", _default_origins)
+if os.getenv("FRONTEND_ORIGIN"):
+    _raw_origins = f"{_raw_origins},{os.getenv('FRONTEND_ORIGIN')}"
+ALLOWED_ORIGINS = list(dict.fromkeys(
+    origin.strip().rstrip("/") for origin in _raw_origins.split(",") if origin.strip()
+))
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=os.getenv("CORS_ALLOW_ORIGIN_REGEX") or None,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
  
 # Key thật PHẢI nạp từ biến môi trường (xem SETUP.md). Fallback ở đây chỉ để
 # server chạy được ngay lúc demo/test, không dùng khi triển khai thật.
@@ -61,6 +79,15 @@ async def dang_ky_sinh_vien(
         )
         sinh_vien_id = cur.fetchone()[0]
         conn.commit()
+    except pg_errors.UniqueViolation:
+        conn.rollback()
+        raise HTTPException(409, f"Mã sinh viên '{ma_sv.strip()}' đã tồn tại trong hệ thống")
+    except pg_errors.ForeignKeyViolation:
+        conn.rollback()
+        raise HTTPException(404, f"Không tìm thấy lớp học id={lop_id}")
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
  
