@@ -44,8 +44,8 @@ Do chưa dựng chạy kiểm thử đồng bộ được phần Backend và AI 
 
 ## 5. Vấn đề còn vướng mắc & xin ý kiến Cô
 
-1. Với cơ chế điểm danh **2 lượt (đầu giờ và cuối giờ)**, nhóm đang phân vân về quy tắc chốt trạng thái điểm danh tổng của ca học: nếu một sinh viên chỉ có mặt 1 trong 2 lượt (ví dụ có đầu giờ nhưng vắng cuối giờ, hoặc chỉ có cuối giờ) thì nên tính là trễ, vắng hay ghi nhận riêng theo từng mốc để giảng viên tự quyết định ạ?
-2. Chuẩn bị bước vào giai đoạn chạy test thực tế Backend FastAPI + AI Core tuần tới, nhóm vẫn còn băn khoăn về dữ liệu đầu vào: ngoài ảnh các thành viên trong nhóm, để đánh giá ngưỡng nhận diện (cosine distance) và đo độ trễ với quy mô một lớp học (~40–60 sinh viên), Cô thấy nhóm nên dùng thêm bộ dữ liệu khuôn mặt công khai (như LFW) hay nên nhờ các bạn cùng lớp chụp mẫu thử nghiệm thực tế ạ?
+1. Chuẩn bị bước vào giai đoạn chạy test thực tế Backend FastAPI + AI Core tuần tới, nhóm vẫn còn băn khoăn về dữ liệu đầu vào: ngoài ảnh các thành viên trong nhóm, để đánh giá ngưỡng nhận diện (cosine distance) và đo độ trễ với quy mô một lớp học (~40–60 sinh viên), Cô thấy nhóm nên dùng thêm bộ dữ liệu khuôn mặt công khai (như LFW) hay nên nhờ các bạn cùng lớp chụp mẫu thử nghiệm thực tế ạ?
+
 
 Trên đây là báo cáo tiến độ thực tế đợt này của nhóm em. Rất mong nhận được góp ý và định hướng thêm của Cô ạ.
 Nhân dịp ngày Nhà giáo Việt Nam 20/11 sắp tới, nhóm em xin kính chúc Cô luôn mạnh khỏe, hạnh phúc và gặt hái thật nhiều thành công trong sự nghiệp giảng dạy cũng như nghiên cứu ạ!
