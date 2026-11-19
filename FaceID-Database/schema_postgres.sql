@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS SinhVien (
     vector_khuon_mat BYTEA,
     vector_version TEXT,
     vector_updated_at TIMESTAMPTZ,
-    lop_id INT NOT NULL REFERENCES LopHoc(id),--tham chiếu đến cột ID của LopHoc
+    lop_id INT NOT NULL REFERENCES LopHoc(id),
     create_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -68,7 +68,7 @@ async def dang_ky_sinh_vien(
 
 
 async def tao_template_tu_anh(anh: list[UploadFile]) -> tuple[np.ndarray, bytes, float]:
-    if len(anh) < 2 or len(anh) > 5:
+    if len(anh) < 1 or len(anh) > 3:
         raise HTTPException(400, "Cần tải lên từ 2 đến 5 ảnh khuôn mặt")
     vectors, confidences = [], []
     for image in anh:
@@ -114,7 +114,7 @@ async def cap_nhat_khuon_mat(sinh_vien_id: int, anh: list[UploadFile] = File(...
         conn.close()
     return {"id": sinh_vien_id, "so_anh": len(anh), "confidence_trung_binh": confidence}
 
-
+                                                                                                    
 @app.delete("/api/v1/sinh-vien/{sinh_vien_id}", status_code=204)
 def xoa_sinh_vien(sinh_vien_id: int):
     conn = get_connection()
