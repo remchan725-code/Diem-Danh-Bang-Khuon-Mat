@@ -8,14 +8,23 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QFont
 from PyQt6.QtCore import Qt
 
-import api_client
-from camera_worker import CameraWorker, lay_danh_sach_camera
-
 # ==============================================================================
 # CẤU HÌNH MÔI TRƯỜNG
 # ==============================================================================
 # DEBUG: True -> Hiện hộp chọn camera & công cụ phát triển. False -> Sản phẩm cuối.
 DEBUG: bool = os.getenv("APP_DEBUG", "True").lower() in ("true", "1", "yes")
+# USE_MOCK: Chỉ bật chủ động bằng `--mock` hoặc `APP_MOCK=true` để demo giao diện,
+# tuyệt đối không tự fallback khi Backend thật lỗi.
+USE_MOCK: bool = (
+    "--mock" in sys.argv
+    or os.getenv("APP_MOCK", "False").lower() in ("true", "1", "yes")
+)
+
+if USE_MOCK:
+    import mock_api_client as api_client
+else:
+    import api_client
+from camera_worker import CameraWorker, lay_danh_sach_camera
 
 class ManHinhBatDauCa(QWidget):
     def __init__(self, chuyen_man_hinh, debug: bool = DEBUG):
@@ -161,6 +170,7 @@ class ManHinhDiemDanhLive(QWidget):
         self.ca_hoc_id = ca_hoc_id
         self.camera_id = camera_id
         self.loai_dot = self.combo_dot.currentData()
+        self.cac_khuon_mat_hien_tai = []
         self.nhan_ket_qua.setText("")
         self.worker = CameraWorker(
             ca_hoc_id,
@@ -169,8 +179,12 @@ class ManHinhDiemDanhLive(QWidget):
         )
         self.worker.khung_hinh_moi.connect(self.cap_nhat_khung_hinh)
         self.worker.ket_qua_diem_danh.connect(self.cap_nhat_ket_qua)
-        self.worker.loi.connect(lambda msg: self.nhan_ket_qua.setText(f"Lỗi: {msg}"))
+        self.worker.loi.connect(self._xu_ly_loi_worker)
         self.worker.start()
+
+    def _xu_ly_loi_worker(self, msg: str):
+        self.cac_khuon_mat_hien_tai = []
+        self.nhan_ket_qua.setText(f"Lỗi: {msg}")
 
     def cap_nhat_khung_hinh(self, jpeg_bytes: bytes):
         image = QImage()
@@ -202,10 +216,14 @@ class ManHinhDiemDanhLive(QWidget):
         )
 
     def cap_nhat_ket_qua(self, ket_qua: dict):
+        cac_mat = ket_qua.get("ket_qua", [])
+        self.cac_khuon_mat_hien_tai = cac_mat
         dong = [f"{r['ho_ten']} ({r.get('khoang_cach')})"
-                for r in ket_qua["ket_qua"] if r["nhan_dien"]]
+                for r in cac_mat if r.get("nhan_dien")]
         if dong:
             self.nhan_ket_qua.setText("Vừa nhận diện: " + ", ".join(dong))
+        elif cac_mat:
+            self.nhan_ket_qua.setText("Phát hiện khuôn mặt chưa xác định (từ chối).")
 
     def chon_dot(self):
         self.loai_dot = self.combo_dot.currentData()
@@ -220,7 +238,10 @@ class ManHinhDiemDanhLive(QWidget):
     def xem_hang_cho(self):
         try:
             danh_sach = api_client.lay_hang_cho_diem_danh(self.ca_hoc_id, self.loai_dot)
-            noi_dung = "\n".join(f"{sv['ma_sv']} - {sv['ho_ten']}" for sv in danh_sach)
+            noi_dung = "\n".join(
+                f"{sv['ma_sv']} - {sv['ho_ten']} [{sv.get('trang_thai', 'cho_xac_nhan')}]"
+                for sv in danh_sach
+            )
             QMessageBox.information(self, "Hàng chờ điểm danh", noi_dung or "Chưa có sinh viên trong hàng chờ.")
         except Exception as e:
             QMessageBox.critical(self, "Không tải được hàng chờ", str(e))
@@ -278,7 +299,9 @@ class CuaSoChinh(QMainWindow):
         self.debug = debug
 
         tieu_de = "Hệ thống điểm danh khuôn mặt"
-        if self.debug:
+        if USE_MOCK:
+            tieu_de += " [MOCK DEMO]"
+        elif self.debug:
             tieu_de += " [Chế độ Development]"
         self.setWindowTitle(tieu_de)
         self.resize(800, 600)
@@ -306,6 +329,12 @@ class CuaSoChinh(QMainWindow):
         elif ten_man_hinh == "bat_dau_ca":
             self.man_bat_dau.tai_lai_toan_bo()
             self.stack.setCurrentWidget(self.man_bat_dau)
+
+    def closeEvent(self, event):
+        if self.man_diem_danh.worker and self.man_diem_danh.worker.isRunning():
+            self.man_diem_danh.worker.dung_lai()
+            self.man_diem_danh.worker.wait()
+        super().closeEvent(event)
 
 
 if __name__ == "__main__":
