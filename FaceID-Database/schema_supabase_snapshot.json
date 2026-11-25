@@ -1,0 +1,1822 @@
+{
+    "views": [
+        {
+            "name": "v_sinh_vien_an_toan",
+            "options": [
+                "security_invoker=true"
+            ],
+            "definition": " SELECT id,\n    ma_sv,\n    ho_ten,\n    lop_id,\n    khoa,\n    user_id,\n    vector_version,\n    vector_updated_at,\n    create_at,\n    sinh_vien_co_vector(id) AS co_vector_khuon_mat\n   FROM sinhvien;"
+        },
+        {
+            "name": "v_yeu_cau_khuon_mat_an_toan",
+            "options": [
+                "security_invoker=true"
+            ],
+            "definition": " SELECT id,\n    sinh_vien_id,\n    vector_version,\n    so_anh,\n    confidence_trung_binh,\n    anh_xem_truoc_base64,\n    ghi_chu_sinh_vien,\n    trang_thai,\n    nguoi_duyet,\n    ly_do_duyet,\n    tao_luc,\n    duyet_luc,\n    yeu_cau_co_vector(id) AS co_vector_tam\n   FROM yeucaudangkykhuonmat;"
+        }
+    ],
+    "tables": {
+        "cahoc": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('cahoc_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "lop_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ngay",
+                    "type": "date",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "gio_bat_dau",
+                    "type": "time",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "gio_ket_thuc",
+                    "type": "time",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "phong_hoc",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "hinh_thuc",
+                    "type": "text",
+                    "default": "'tai_lop'::text",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "loai_ca",
+                    "type": "text",
+                    "default": "'lich_goc'::text",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ca_goc_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "cahoc_pkey",
+                    "definition": "CREATE UNIQUE INDEX cahoc_pkey ON public.cahoc USING btree (id)"
+                },
+                {
+                    "name": "idx_ca_hoc_lop_ngay",
+                    "definition": "CREATE INDEX idx_ca_hoc_lop_ngay ON public.cahoc USING btree (lop_id, ngay)"
+                },
+                {
+                    "name": "uq_ca_hoc",
+                    "definition": "CREATE UNIQUE INDEX uq_ca_hoc ON public.cahoc USING btree (lop_id, ngay, gio_bat_dau)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_cahoc",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_cahoc",
+                    "qual": "giang_vien_co_lop(lop_id)",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_cahoc",
+                    "qual": "sinh_vien_thuoc_lop(lop_id)",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "DELETE"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "INSERT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "UPDATE"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "cahoc_ca_goc_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (ca_goc_id) REFERENCES cahoc(id)"
+                },
+                {
+                    "name": "cahoc_lop_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (lop_id) REFERENCES lophoc(id)"
+                },
+                {
+                    "name": "cahoc_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "check_time",
+                    "type": "c",
+                    "definition": "CHECK (((gio_ket_thuc IS NULL) OR (gio_ket_thuc > gio_bat_dau)))"
+                },
+                {
+                    "name": "chk_cahoc_hinh_thuc",
+                    "type": "c",
+                    "definition": "CHECK ((hinh_thuc = ANY (ARRAY['tai_lop'::text, 'truc_tuyen'::text])))"
+                },
+                {
+                    "name": "chk_cahoc_loai_ca",
+                    "type": "c",
+                    "definition": "CHECK ((loai_ca = ANY (ARRAY['lich_goc'::text, 'hoc_bu'::text])))"
+                },
+                {
+                    "name": "uq_ca_hoc",
+                    "type": "u",
+                    "definition": "UNIQUE (lop_id, ngay, gio_bat_dau)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "lophoc": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('lophoc_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ten_lop",
+                    "type": "varchar",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamp",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "lophoc_pkey",
+                    "definition": "CREATE UNIQUE INDEX lophoc_pkey ON public.lophoc USING btree (id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_lophoc",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_lophoc",
+                    "qual": "giang_vien_co_lop(id)",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_lophoc",
+                    "qual": "sinh_vien_thuoc_lop(id)",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "DELETE"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "INSERT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "UPDATE"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "lophoc_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "lophoc_ten_lop_check",
+                    "type": "c",
+                    "definition": "CHECK ((btrim((ten_lop)::text) <> ''::text))"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "sinhvien": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('sinhvien_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ma_sv",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ho_ten",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "vector_tho",
+                    "type": "vector",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "vector_khuon_mat",
+                    "type": "bytea",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "vector_version",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "vector_updated_at",
+                    "type": "timestamptz",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "lop_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "create_at",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "khoa",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "user_id",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "idx_sinh_vien_lop",
+                    "definition": "CREATE INDEX idx_sinh_vien_lop ON public.sinhvien USING btree (lop_id)"
+                },
+                {
+                    "name": "idx_sinhvien_masv",
+                    "definition": "CREATE INDEX idx_sinhvien_masv ON public.sinhvien USING btree (ma_sv)"
+                },
+                {
+                    "name": "sinhvien_ma_sv_key",
+                    "definition": "CREATE UNIQUE INDEX sinhvien_ma_sv_key ON public.sinhvien USING btree (ma_sv)"
+                },
+                {
+                    "name": "sinhvien_pkey",
+                    "definition": "CREATE UNIQUE INDEX sinhvien_pkey ON public.sinhvien USING btree (id)"
+                },
+                {
+                    "name": "uq_sinhvien_user_id",
+                    "definition": "CREATE UNIQUE INDEX uq_sinhvien_user_id ON public.sinhvien USING btree (user_id) WHERE (user_id IS NOT NULL)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_sinhvien",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_sinhvien",
+                    "qual": "giang_vien_phu_trach_sinh_vien(id)",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_self",
+                    "qual": "(id = current_sinh_vien_id())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "DELETE"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "sinhvien_ho_ten_check",
+                    "type": "c",
+                    "definition": "CHECK ((btrim(ho_ten) <> ''::text))"
+                },
+                {
+                    "name": "sinhvien_lop_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (lop_id) REFERENCES lophoc(id)"
+                },
+                {
+                    "name": "sinhvien_ma_sv_check",
+                    "type": "c",
+                    "definition": "CHECK ((btrim(ma_sv) <> ''::text))"
+                },
+                {
+                    "name": "sinhvien_ma_sv_key",
+                    "type": "u",
+                    "definition": "UNIQUE (ma_sv)"
+                },
+                {
+                    "name": "sinhvien_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "sinhvien_user_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "dotdiemdanh": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('dotdiemdanh_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ca_hoc_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "loai",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "trang_thai",
+                    "type": "text",
+                    "default": "'dong'::text",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "mo_luc",
+                    "type": "timestamptz",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "dong_luc",
+                    "type": "timestamptz",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "giang_vien_id",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "dotdiemdanh_pkey",
+                    "definition": "CREATE UNIQUE INDEX dotdiemdanh_pkey ON public.dotdiemdanh USING btree (id)"
+                },
+                {
+                    "name": "uq_dot_diem_danh",
+                    "definition": "CREATE UNIQUE INDEX uq_dot_diem_danh ON public.dotdiemdanh USING btree (ca_hoc_id, loai)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_dotdiemdanh",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_dotdiemdanh",
+                    "qual": "(EXISTS ( SELECT 1\n   FROM cahoc c\n  WHERE ((c.id = dotdiemdanh.ca_hoc_id) AND giang_vien_co_lop(c.lop_id))))",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_dotdiemdanh",
+                    "qual": "(EXISTS ( SELECT 1\n   FROM cahoc c\n  WHERE ((c.id = dotdiemdanh.ca_hoc_id) AND sinh_vien_thuoc_lop(c.lop_id))))",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "dotdiemdanh_ca_hoc_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (ca_hoc_id) REFERENCES cahoc(id)"
+                },
+                {
+                    "name": "dotdiemdanh_loai_check",
+                    "type": "c",
+                    "definition": "CHECK ((loai = ANY (ARRAY['dau_gio'::text, 'cuoi_gio'::text])))"
+                },
+                {
+                    "name": "dotdiemdanh_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "dotdiemdanh_trang_thai_check",
+                    "type": "c",
+                    "definition": "CHECK ((trang_thai = ANY (ARRAY['mo'::text, 'dong'::text])))"
+                },
+                {
+                    "name": "uq_dot_diem_danh",
+                    "type": "u",
+                    "definition": "UNIQUE (ca_hoc_id, loai)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "nhatkyquantri": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('nhatkyquantri_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "nguoi_thuc_hien",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "hanh_dong",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "doi_tuong",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "doi_tuong_id",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "ly_do",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "thong_tin_thay_doi",
+                    "type": "jsonb",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "thoi_gian",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "nhatkyquantri_pkey",
+                    "definition": "CREATE UNIQUE INDEX nhatkyquantri_pkey ON public.nhatkyquantri USING btree (id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "INSERT",
+                    "name": "authenticated_insert_nhatkyquantri",
+                    "qual": null,
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "(nguoi_thuc_hien = auth.uid())"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "dev_admin_select_nhatkyquantri",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_own_audit",
+                    "qual": "(nguoi_thuc_hien = auth.uid())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "INSERT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "nhatkyquantri_nguoi_thuc_hien_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (nguoi_thuc_hien) REFERENCES auth.users(id)"
+                },
+                {
+                    "name": "nhatkyquantri_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "nhatkyxacthuc": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('nhatkyxacthuc_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ca_hoc_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "sinh_vien_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "thoi_gian",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ket_qua",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ly_do_tu_choi",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "diem_khuon_mat",
+                    "type": "numeric",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "diem_song",
+                    "type": "numeric",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "model_version",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "device_id",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "request_id",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "NO"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "idx_nhat_ky_ca_hoc_thoi_gian",
+                    "definition": "CREATE INDEX idx_nhat_ky_ca_hoc_thoi_gian ON public.nhatkyxacthuc USING btree (ca_hoc_id, thoi_gian DESC)"
+                },
+                {
+                    "name": "idx_nhat_ky_sinh_vien_thoi_gian",
+                    "definition": "CREATE INDEX idx_nhat_ky_sinh_vien_thoi_gian ON public.nhatkyxacthuc USING btree (sinh_vien_id, thoi_gian DESC)"
+                },
+                {
+                    "name": "nhatkyxacthuc_pkey",
+                    "definition": "CREATE UNIQUE INDEX nhatkyxacthuc_pkey ON public.nhatkyxacthuc USING btree (id)"
+                },
+                {
+                    "name": "nhatkyxacthuc_request_id_key",
+                    "definition": "CREATE UNIQUE INDEX nhatkyxacthuc_request_id_key ON public.nhatkyxacthuc USING btree (request_id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "SELECT",
+                    "name": "dev_admin_select_nhatkyxacthuc",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "chk_chap_nhan_can_sinh_vien",
+                    "type": "c",
+                    "definition": "CHECK (((ket_qua <> 'chap_nhan'::text) OR (sinh_vien_id IS NOT NULL)))"
+                },
+                {
+                    "name": "chk_diem_khuon_mat",
+                    "type": "c",
+                    "definition": "CHECK (((diem_khuon_mat IS NULL) OR ((diem_khuon_mat >= (0)::numeric) AND (diem_khuon_mat <= (1)::numeric))))"
+                },
+                {
+                    "name": "chk_diem_song",
+                    "type": "c",
+                    "definition": "CHECK (((diem_song IS NULL) OR ((diem_song >= (0)::numeric) AND (diem_song <= (1)::numeric))))"
+                },
+                {
+                    "name": "chk_ket_qua_xac_thuc",
+                    "type": "c",
+                    "definition": "CHECK ((ket_qua = ANY (ARRAY['chap_nhan'::text, 'tu_choi'::text, 'khong_xac_dinh'::text])))"
+                },
+                {
+                    "name": "chk_ly_do_tu_choi",
+                    "type": "c",
+                    "definition": "CHECK (((ket_qua <> 'tu_choi'::text) OR (ly_do_tu_choi IS NOT NULL)))"
+                },
+                {
+                    "name": "nhatkyxacthuc_ca_hoc_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (ca_hoc_id) REFERENCES cahoc(id)"
+                },
+                {
+                    "name": "nhatkyxacthuc_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "nhatkyxacthuc_request_id_key",
+                    "type": "u",
+                    "definition": "UNIQUE (request_id)"
+                },
+                {
+                    "name": "nhatkyxacthuc_sinh_vien_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (sinh_vien_id) REFERENCES sinhvien(id)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "lichsudiemdanh": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('lichsudiemdanh_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "sinh_vien_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ca_hoc_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "thoi_gian",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "YES"
+                },
+                {
+                    "name": "trang_thai",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "is_synced",
+                    "type": "bool",
+                    "default": "false",
+                    "nullable": "YES"
+                },
+                {
+                    "name": "dau_gio",
+                    "type": "bool",
+                    "default": "false",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "dau_gio_luc",
+                    "type": "timestamptz",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "cuoi_gio",
+                    "type": "bool",
+                    "default": "false",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "cuoi_gio_luc",
+                    "type": "timestamptz",
+                    "default": null,
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "idx_diem_danh_ca_hoc",
+                    "definition": "CREATE INDEX idx_diem_danh_ca_hoc ON public.lichsudiemdanh USING btree (ca_hoc_id)"
+                },
+                {
+                    "name": "idx_diem_danh_sinh_vien",
+                    "definition": "CREATE INDEX idx_diem_danh_sinh_vien ON public.lichsudiemdanh USING btree (sinh_vien_id)"
+                },
+                {
+                    "name": "lichsudiemdanh_pkey",
+                    "definition": "CREATE UNIQUE INDEX lichsudiemdanh_pkey ON public.lichsudiemdanh USING btree (id)"
+                },
+                {
+                    "name": "uq_diemdanh",
+                    "definition": "CREATE UNIQUE INDEX uq_diemdanh ON public.lichsudiemdanh USING btree (ca_hoc_id, sinh_vien_id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_diemdanh",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_diemdanh",
+                    "qual": "(EXISTS ( SELECT 1\n   FROM cahoc\n  WHERE ((cahoc.id = lichsudiemdanh.ca_hoc_id) AND giang_vien_co_lop(cahoc.lop_id))))",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_own_diemdanh",
+                    "qual": "(sinh_vien_id = current_sinh_vien_id())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "lichsudiemdanh_ca_hoc_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (ca_hoc_id) REFERENCES cahoc(id)"
+                },
+                {
+                    "name": "lichsudiemdanh_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "lichsudiemdanh_sinh_vien_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (sinh_vien_id) REFERENCES sinhvien(id)"
+                },
+                {
+                    "name": "lichsudiemdanh_trang_thai_check",
+                    "type": "c",
+                    "definition": "CHECK ((trang_thai = ANY (ARRAY['co_mat'::text, 'tre'::text, 'vang'::text])))"
+                },
+                {
+                    "name": "uq_diemdanh",
+                    "type": "u",
+                    "definition": "UNIQUE (ca_hoc_id, sinh_vien_id)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "hangchodiemdanh": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int8",
+                    "default": "nextval('hangchodiemdanh_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "dot_diem_danh_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "sinh_vien_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "request_id",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "trang_thai",
+                    "type": "text",
+                    "default": "'cho_xac_nhan'::text",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "queued_at",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "quyet_dinh_luc",
+                    "type": "timestamptz",
+                    "default": null,
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "hangchodiemdanh_pkey",
+                    "definition": "CREATE UNIQUE INDEX hangchodiemdanh_pkey ON public.hangchodiemdanh USING btree (id)"
+                },
+                {
+                    "name": "hangchodiemdanh_request_id_key",
+                    "definition": "CREATE UNIQUE INDEX hangchodiemdanh_request_id_key ON public.hangchodiemdanh USING btree (request_id)"
+                },
+                {
+                    "name": "idx_hang_cho_dot_trang_thai",
+                    "definition": "CREATE INDEX idx_hang_cho_dot_trang_thai ON public.hangchodiemdanh USING btree (dot_diem_danh_id, trang_thai, queued_at)"
+                },
+                {
+                    "name": "uq_hang_cho_dot_sinh_vien",
+                    "definition": "CREATE UNIQUE INDEX uq_hang_cho_dot_sinh_vien ON public.hangchodiemdanh USING btree (dot_diem_danh_id, sinh_vien_id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_hangcho",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_hangcho",
+                    "qual": "(EXISTS ( SELECT 1\n   FROM (dotdiemdanh d\n     JOIN cahoc c ON ((c.id = d.ca_hoc_id)))\n  WHERE ((d.id = hangchodiemdanh.dot_diem_danh_id) AND giang_vien_co_lop(c.lop_id))))",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_own_hangcho",
+                    "qual": "(sinh_vien_id = current_sinh_vien_id())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "hangchodiemdanh_dot_diem_danh_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (dot_diem_danh_id) REFERENCES dotdiemdanh(id)"
+                },
+                {
+                    "name": "hangchodiemdanh_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "hangchodiemdanh_request_id_key",
+                    "type": "u",
+                    "definition": "UNIQUE (request_id)"
+                },
+                {
+                    "name": "hangchodiemdanh_sinh_vien_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (sinh_vien_id) REFERENCES sinhvien(id)"
+                },
+                {
+                    "name": "hangchodiemdanh_trang_thai_check",
+                    "type": "c",
+                    "definition": "CHECK ((trang_thai = ANY (ARRAY['cho_xac_nhan'::text, 'chap_nhan'::text, 'tu_choi'::text])))"
+                },
+                {
+                    "name": "uq_hang_cho_dot_sinh_vien",
+                    "type": "u",
+                    "definition": "UNIQUE (dot_diem_danh_id, sinh_vien_id)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "lophoc_sinhvien": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('lophoc_sinhvien_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "lop_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "sinh_vien_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ngay_dang_ky",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "idx_lop_hoc_sinh_vien_lop",
+                    "definition": "CREATE INDEX idx_lop_hoc_sinh_vien_lop ON public.lophoc_sinhvien USING btree (lop_id)"
+                },
+                {
+                    "name": "idx_lop_hoc_sinh_vien_sv",
+                    "definition": "CREATE INDEX idx_lop_hoc_sinh_vien_sv ON public.lophoc_sinhvien USING btree (sinh_vien_id)"
+                },
+                {
+                    "name": "lophoc_sinhvien_pkey",
+                    "definition": "CREATE UNIQUE INDEX lophoc_sinhvien_pkey ON public.lophoc_sinhvien USING btree (id)"
+                },
+                {
+                    "name": "uq_lop_hoc_sinh_vien",
+                    "definition": "CREATE UNIQUE INDEX uq_lop_hoc_sinh_vien ON public.lophoc_sinhvien USING btree (lop_id, sinh_vien_id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_lophoc_sinhvien",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_lophoc_sinhvien",
+                    "qual": "giang_vien_co_lop(lop_id)",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_own_lophoc_sinhvien",
+                    "qual": "(sinh_vien_id = current_sinh_vien_id())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "DELETE"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "INSERT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "UPDATE"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "lophoc_sinhvien_lop_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (lop_id) REFERENCES lophoc(id) ON DELETE RESTRICT"
+                },
+                {
+                    "name": "lophoc_sinhvien_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "lophoc_sinhvien_sinh_vien_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (sinh_vien_id) REFERENCES sinhvien(id) ON DELETE CASCADE"
+                },
+                {
+                    "name": "uq_lop_hoc_sinh_vien",
+                    "type": "u",
+                    "definition": "UNIQUE (lop_id, sinh_vien_id)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "nguoidunghethong": {
+            "columns": [
+                {
+                    "name": "user_id",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "email",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ho_ten",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "vai_tro",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "is_active",
+                    "type": "bool",
+                    "default": "true",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "created_at",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "nguoidunghethong_email_key",
+                    "definition": "CREATE UNIQUE INDEX nguoidunghethong_email_key ON public.nguoidunghethong USING btree (email)"
+                },
+                {
+                    "name": "nguoidunghethong_pkey",
+                    "definition": "CREATE UNIQUE INDEX nguoidunghethong_pkey ON public.nguoidunghethong USING btree (user_id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_users",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "users_read_self",
+                    "qual": "(user_id = auth.uid())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "DELETE"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "INSERT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "UPDATE"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "nguoidunghethong_email_key",
+                    "type": "u",
+                    "definition": "UNIQUE (email)"
+                },
+                {
+                    "name": "nguoidunghethong_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (user_id)"
+                },
+                {
+                    "name": "nguoidunghethong_user_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+                },
+                {
+                    "name": "nguoidunghethong_vai_tro_check",
+                    "type": "c",
+                    "definition": "CHECK ((vai_tro = ANY (ARRAY['dev_admin'::text, 'giang_vien'::text, 'sinh_vien'::text])))"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "phanconggiangvien": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('phanconggiangvien_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "giang_vien_id",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "lop_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "ngay_phan_cong",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "nguoi_phan_cong",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "phanconggiangvien_pkey",
+                    "definition": "CREATE UNIQUE INDEX phanconggiangvien_pkey ON public.phanconggiangvien USING btree (id)"
+                },
+                {
+                    "name": "uq_giang_vien_lop",
+                    "definition": "CREATE UNIQUE INDEX uq_giang_vien_lop ON public.phanconggiangvien USING btree (giang_vien_id, lop_id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_all_phancong",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_own_phancong",
+                    "qual": "(giang_vien_id = auth.uid())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "DELETE"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "INSERT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "UPDATE"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "phanconggiangvien_giang_vien_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (giang_vien_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+                },
+                {
+                    "name": "phanconggiangvien_lop_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (lop_id) REFERENCES lophoc(id) ON DELETE RESTRICT"
+                },
+                {
+                    "name": "phanconggiangvien_nguoi_phan_cong_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (nguoi_phan_cong) REFERENCES auth.users(id)"
+                },
+                {
+                    "name": "phanconggiangvien_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "uq_giang_vien_lop",
+                    "type": "u",
+                    "definition": "UNIQUE (giang_vien_id, lop_id)"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "yeucaudangkykhuonmat": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "nextval('yeucaudangkykhuonmat_id_seq'::regclass)",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "sinh_vien_id",
+                    "type": "int4",
+                    "default": null,
+                    "nullable": "NO"
+                },
+                {
+                    "name": "vector_tho_tam",
+                    "type": "vector",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "vector_khuon_mat_tam",
+                    "type": "bytea",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "vector_version",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "so_anh",
+                    "type": "int4",
+                    "default": "0",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "confidence_trung_binh",
+                    "type": "numeric",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "anh_xem_truoc_base64",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "ghi_chu_sinh_vien",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "trang_thai",
+                    "type": "text",
+                    "default": "'cho_duyet'::text",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "nguoi_duyet",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "ly_do_duyet",
+                    "type": "text",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "tao_luc",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "duyet_luc",
+                    "type": "timestamptz",
+                    "default": null,
+                    "nullable": "YES"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "idx_yeu_cau_khuon_mat_sv_trang_thai",
+                    "definition": "CREATE INDEX idx_yeu_cau_khuon_mat_sv_trang_thai ON public.yeucaudangkykhuonmat USING btree (sinh_vien_id, trang_thai, tao_luc DESC)"
+                },
+                {
+                    "name": "uq_yeu_cau_khuon_mat_cho_duyet",
+                    "definition": "CREATE UNIQUE INDEX uq_yeu_cau_khuon_mat_cho_duyet ON public.yeucaudangkykhuonmat USING btree (sinh_vien_id) WHERE (trang_thai = 'cho_duyet'::text)"
+                },
+                {
+                    "name": "yeucaudangkykhuonmat_pkey",
+                    "definition": "CREATE UNIQUE INDEX yeucaudangkykhuonmat_pkey ON public.yeucaudangkykhuonmat USING btree (id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "SELECT",
+                    "name": "dev_admin_select_yeucaukhuonmat",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_select_yeucaukhuonmat",
+                    "qual": "giang_vien_phu_trach_sinh_vien(sinh_vien_id)",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "sinh_vien_select_own_yeucaukhuonmat",
+                    "qual": "(sinh_vien_id = current_sinh_vien_id())",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+            ],
+            "constraints": [
+                {
+                    "name": "yeucaudangkykhuonmat_nguoi_duyet_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (nguoi_duyet) REFERENCES auth.users(id)"
+                },
+                {
+                    "name": "yeucaudangkykhuonmat_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "yeucaudangkykhuonmat_sinh_vien_id_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (sinh_vien_id) REFERENCES sinhvien(id) ON DELETE CASCADE"
+                },
+                {
+                    "name": "yeucaudangkykhuonmat_trang_thai_check",
+                    "type": "c",
+                    "definition": "CHECK ((trang_thai = ANY (ARRAY['cho_duyet'::text, 'da_duyet'::text, 'tu_choi'::text])))"
+                }
+            ],
+            "rls_enabled": true
+        },
+        "cauhinhquyengiangvien": {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "int4",
+                    "default": "1",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "cho_phep_doi_ca",
+                    "type": "bool",
+                    "default": "false",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "cho_phep_chinh_sua_diem_danh",
+                    "type": "bool",
+                    "default": "false",
+                    "nullable": "NO"
+                },
+                {
+                    "name": "updated_by",
+                    "type": "uuid",
+                    "default": null,
+                    "nullable": "YES"
+                },
+                {
+                    "name": "updated_at",
+                    "type": "timestamptz",
+                    "default": "CURRENT_TIMESTAMP",
+                    "nullable": "NO"
+                }
+            ],
+            "indexes": [
+                {
+                    "name": "cauhinhquyengiangvien_pkey",
+                    "definition": "CREATE UNIQUE INDEX cauhinhquyengiangvien_pkey ON public.cauhinhquyengiangvien USING btree (id)"
+                }
+            ],
+            "policies": [
+                {
+                    "cmd": "ALL",
+                    "name": "dev_admin_manage_cauhinh",
+                    "qual": "is_dev_admin()",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": "is_dev_admin()"
+                },
+                {
+                    "cmd": "SELECT",
+                    "name": "giang_vien_read_cauhinh",
+                    "qual": "true",
+                    "roles": [
+                        "authenticated"
+                    ],
+                    "with_check": null
+                }
+            ],
+            "privileges": [
+                {
+                    "grantee": "authenticated",
+                    "privilege": "SELECT"
+                },
+                {
+                    "grantee": "authenticated",
+                    "privilege": "UPDATE"
+                }
+            ],
+            "constraints": [
+                {
+                    "name": "cauhinhquyengiangvien_id_check",
+                    "type": "c",
+                    "definition": "CHECK ((id = 1))"
+                },
+                {
+                    "name": "cauhinhquyengiangvien_pkey",
+                    "type": "p",
+                    "definition": "PRIMARY KEY (id)"
+                },
+                {
+                    "name": "cauhinhquyengiangvien_updated_by_fkey",
+                    "type": "f",
+                    "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id)"
+                }
+            ],
+            "rls_enabled": true
+        }
+    },
+    "triggers": [
+        {
+            "name": "trg_prevent_role_escalation",
+            "event": "UPDATE",
+            "table": "nguoidunghethong"
+        },
+        {
+            "name": "trg_sync_sinhvien_primary_class",
+            "event": "INSERT",
+            "table": "sinhvien"
+        },
+        {
+            "name": "trg_sync_sinhvien_primary_class",
+            "event": "UPDATE",
+            "table": "sinhvien"
+        }
+    ],
+    "functions": [
+        {
+            "args": "",
+            "name": "current_sinh_vien_id",
+            "security_definer": true
+        },
+        {
+            "args": "",
+            "name": "current_user_role",
+            "security_definer": true
+        },
+        {
+            "args": "p_lop_id integer",
+            "name": "giang_vien_co_lop",
+            "security_definer": true
+        },
+        {
+            "args": "p_sinh_vien_id integer",
+            "name": "giang_vien_phu_trach_sinh_vien",
+            "security_definer": true
+        },
+        {
+            "args": "",
+            "name": "is_dev_admin",
+            "security_definer": true
+        },
+        {
+            "args": "",
+            "name": "prevent_role_escalation",
+            "security_definer": true
+        },
+        {
+            "args": "p_diem_danh_id integer, p_trang_thai_moi text, p_ly_do text",
+            "name": "rpc_dieu_chinh_diem_danh",
+            "security_definer": true
+        },
+        {
+            "args": "p_ca_hoc_id integer, p_ngay_moi date, p_gio_bat_dau_moi time without time zone, p_gio_ket_thuc_moi time without time zone, p_ly_do text",
+            "name": "rpc_doi_ca_hoc",
+            "security_definer": true
+        },
+        {
+            "args": "p_yeu_cau_id integer, p_quyet_dinh text, p_ly_do text",
+            "name": "rpc_duyet_yeu_cau_khuon_mat",
+            "security_definer": true
+        },
+        {
+            "args": "p_sinh_vien_id integer",
+            "name": "sinh_vien_co_vector",
+            "security_definer": true
+        },
+        {
+            "args": "p_lop_id integer",
+            "name": "sinh_vien_thuoc_lop",
+            "security_definer": true
+        },
+        {
+            "args": "",
+            "name": "sync_auth_user_email",
+            "security_definer": true
+        },
+        {
+            "args": "",
+            "name": "sync_sinhvien_primary_class",
+            "security_definer": true
+        },
+        {
+            "args": "p_yeu_cau_id integer",
+            "name": "yeu_cau_co_vector",
+            "security_definer": true
+        }
+    ],
+    "extensions": [
+        "pg_stat_statements",
+        "pgcrypto",
+        "plpgsql",
+        "supabase_vault",
+        "uuid-ossp",
+        "vector"
+    ],
+    "exported_at": "2026-11-25T12:47:27.961711+00:00",
+    "sinhvien_column_privileges": [
+        {
+            "column": "create_at",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "ho_ten",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "id",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "khoa",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "lop_id",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "ma_sv",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "user_id",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "vector_updated_at",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        },
+        {
+            "column": "vector_version",
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+        }
+    ]
+}

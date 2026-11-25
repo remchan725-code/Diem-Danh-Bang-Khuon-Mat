@@ -1,3 +1,4 @@
+import base64
 import os
 import uuid
 import numpy as np
@@ -61,23 +62,40 @@ async def dang_ky_sinh_vien(
     ma_sv: str = Form(...),
     ho_ten: str = Form(...),
     lop_id: int = Form(...),
+    khoa: str | None = Form(None),
     anh: list[UploadFile] = File(...),
 ):
-    vector, vector_khuon_mat_ma_hoa, confidence = await tao_template_tu_anh(anh)
+    vector, vector_khuon_mat_ma_hoa, confidence, _ = await tao_template_tu_anh(anh)
     conn = get_connection()
     try:
         cur = conn.cursor()
         cur.execute(
             """
             INSERT INTO SinhVien
-                (ma_sv, ho_ten, lop_id, vector_tho, vector_khuon_mat,
+                (ma_sv, ho_ten, lop_id, khoa, vector_tho, vector_khuon_mat,
                  vector_version, vector_updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             RETURNING id
             """,
-            (ma_sv.strip(), ho_ten.strip(), lop_id, vector, vector_khuon_mat_ma_hoa, MODEL_VERSION),
+            (
+                ma_sv.strip(),
+                ho_ten.strip(),
+                lop_id,
+                khoa.strip() if khoa and khoa.strip() else None,
+                vector,
+                vector_khuon_mat_ma_hoa,
+                MODEL_VERSION,
+            ),
         )
         sinh_vien_id = cur.fetchone()[0]
+        cur.execute(
+            """
+            INSERT INTO LopHoc_SinhVien (lop_id, sinh_vien_id)
+            VALUES (%s, %s)
+            ON CONFLICT (lop_id, sinh_vien_id) DO NOTHING
+            """,
+            (lop_id, sinh_vien_id),
+        )
         conn.commit()
     except pg_errors.UniqueViolation:
         conn.rollback()
@@ -90,18 +108,42 @@ async def dang_ky_sinh_vien(
         raise
     finally:
         conn.close()
- 
+
     return {"id": sinh_vien_id, "ma_sv": ma_sv, "so_anh": len(anh), "confidence_trung_binh": confidence}
 
 
-async def tao_template_tu_anh(anh: list[UploadFile]) -> tuple[np.ndarray, bytes, float]:
-    if len(anh) < 1 or len(anh) > 3:
-        raise HTTPException(400, "Cần tải lên từ 2 đến 5 ảnh khuôn mặt")
+def _tao_anh_xem_truoc_base64(raw_bytes: bytes, max_side: int = 240) -> str | None:
+    """Tạo ảnh thu nhỏ JPEG (<=240px) tạm thời để Admin/GV đối chiếu khi duyệt; xóa ngay khi duyệt/từ chối."""
+    try:
+        import cv2
+
+        arr = np.frombuffer(raw_bytes, np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return None
+        h, w = img.shape[:2]
+        scale = min(1.0, max_side / max(h, w))
+        if scale < 1.0:
+            img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale))))
+        ok, encoded = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+        if not ok:
+            return None
+        return "data:image/jpeg;base64," + base64.b64encode(encoded.tobytes()).decode("ascii")
+    except Exception:
+        return None
+
+
+async def tao_template_tu_anh(anh: list[UploadFile]) -> tuple[np.ndarray, bytes, float, bytes]:
+    if len(anh) < 1 or len(anh) > 5:
+        raise HTTPException(400, "Cần tải lên từ 1 đến 5 ảnh khuôn mặt")
     vectors, confidences = [], []
+    first_raw: bytes = b""
     for image in anh:
         raw = await image.read()
         if not raw:
             raise HTTPException(400, f"Ảnh {image.filename or ''} bị rỗng")
+        if not first_raw:
+            first_raw = raw
         result = ai_core_client.register_face(raw)
         if result["face_count"] != 1 or not result["vector"]:
             raise HTTPException(400, f"Ảnh {image.filename or ''} phải có đúng một khuôn mặt")
@@ -115,12 +157,153 @@ async def tao_template_tu_anh(anh: list[UploadFile]) -> tuple[np.ndarray, bytes,
         raise HTTPException(400, "Không thể tạo template khuôn mặt từ các ảnh đã gửi")
     vector = (vector / norm).astype(np.float32)
     encrypted = crypto_utils.encrypt_vector(vector.tolist(), FERNET_KEY)
-    return vector, encrypted, float(np.mean(confidences))
+    return vector, encrypted, float(np.mean(confidences)), first_raw
+
+
+@app.post("/api/v1/yeu-cau-khuon-mat")
+async def nop_yeu_cau_khuon_mat(
+    sinh_vien_id: int = Form(...),
+    ghi_chu: str | None = Form(None),
+    anh: list[UploadFile] = File(...),
+):
+    """Sinh viên tự nộp 1-5 ảnh mẫu khuôn mặt vào hàng chờ duyệt (chưa kích hoạt điểm danh ngay)."""
+    vector, encrypted, confidence, first_raw = await tao_template_tu_anh(anh)
+    preview_b64 = _tao_anh_xem_truoc_base64(first_raw)
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, ma_sv FROM SinhVien WHERE id = %s", (sinh_vien_id,))
+        sv = cur.fetchone()
+        if sv is None:
+            raise HTTPException(404, "Không tìm thấy hồ sơ sinh viên")
+        cur.execute(
+            """
+            INSERT INTO YeuCauDangKyKhuonMat
+                (sinh_vien_id, vector_tho_tam, vector_khuon_mat_tam, vector_version,
+                 so_anh, confidence_trung_binh, anh_xem_truoc_base64, ghi_chu_sinh_vien, trang_thai)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'cho_duyet')
+            RETURNING id, tao_luc
+            """,
+            (
+                sinh_vien_id,
+                vector,
+                encrypted,
+                MODEL_VERSION,
+                len(anh),
+                round(confidence, 4),
+                preview_b64,
+                ghi_chu.strip() if ghi_chu and ghi_chu.strip() else None,
+            ),
+        )
+        req_id, tao_luc = cur.fetchone()
+        conn.commit()
+    except pg_errors.UniqueViolation:
+        conn.rollback()
+        raise HTTPException(
+            409,
+            "Bạn đang có một yêu cầu đăng ký khuôn mặt chờ duyệt. Vui lòng đợi Quản trị viên hoặc Giảng viên xử lý.",
+        )
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return {
+        "id": req_id,
+        "sinh_vien_id": sinh_vien_id,
+        "ma_sv": sv[1],
+        "so_anh": len(anh),
+        "confidence_trung_binh": round(confidence, 4),
+        "trang_thai": "cho_duyet",
+        "tao_luc": tao_luc.isoformat(),
+    }
+
+
+@app.get("/api/v1/sinh-vien/tra-cuu/{ma_sv}")
+def tra_cuu_lop_va_ca_theo_ma_sv(ma_sv: str):
+    """Gọi 1 mã sinh viên -> trả về hồ sơ, danh sách lớp học phần (LopHoc_SinhVien) và ca học."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, ma_sv, ho_ten, lop_id, khoa,
+                   (vector_tho IS NOT NULL OR vector_khuon_mat IS NOT NULL) AS co_vector
+            FROM SinhVien
+            WHERE upper(ma_sv) = upper(%s)
+            """,
+            (ma_sv.strip(),),
+        )
+        sv = cur.fetchone()
+        if sv is None:
+            raise HTTPException(404, f"Không tìm thấy sinh viên có mã '{ma_sv.strip()}'")
+        sv_id = sv[0]
+
+        cur.execute(
+            """
+            SELECT DISTINCT l.id, l.ten_lop
+            FROM LopHoc l
+            LEFT JOIN LopHoc_SinhVien ls ON ls.lop_id = l.id AND ls.sinh_vien_id = %s
+            WHERE ls.sinh_vien_id IS NOT NULL OR l.id = %s
+            ORDER BY l.ten_lop
+            """,
+            (sv_id, sv[3]),
+        )
+        cac_lop = [{"id": r[0], "ten_lop": r[1]} for r in cur.fetchall()]
+        lop_ids = [lop["id"] for lop in cac_lop]
+
+        cac_ca = []
+        if lop_ids:
+            cur.execute(
+                """
+                SELECT c.id, c.lop_id, l.ten_lop, c.ngay, c.gio_bat_dau, c.gio_ket_thuc,
+                       c.phong_hoc, c.hinh_thuc,
+                       EXISTS (
+                           SELECT 1 FROM DotDiemDanh d
+                           WHERE d.ca_hoc_id = c.id AND d.trang_thai = 'mo'
+                       ) AS dang_mo_diem_danh
+                FROM CaHoc c
+                JOIN LopHoc l ON l.id = c.lop_id
+                WHERE c.lop_id = ANY(%s)
+                ORDER BY c.ngay DESC, c.gio_bat_dau DESC
+                LIMIT 30
+                """,
+                (lop_ids,),
+            )
+            cac_ca = [
+                {
+                    "ca_hoc_id": r[0],
+                    "lop_id": r[1],
+                    "ten_lop": r[2],
+                    "ngay": str(r[3]),
+                    "gio_bat_dau": str(r[4]),
+                    "gio_ket_thuc": str(r[5]) if r[5] else None,
+                    "phong_hoc": r[6],
+                    "hinh_thuc": r[7],
+                    "dang_mo_diem_danh": bool(r[8]),
+                }
+                for r in cur.fetchall()
+            ]
+        return {
+            "sinh_vien": {
+                "id": sv_id,
+                "ma_sv": sv[1],
+                "ho_ten": sv[2],
+                "lop_hanh_chinh_id": sv[3],
+                "khoa": sv[4],
+                "co_vector_khuon_mat": bool(sv[5]),
+            },
+            "cac_lop": cac_lop,
+            "cac_ca_hoc": cac_ca,
+        }
+    finally:
+        conn.close()
 
 
 @app.put("/api/v1/sinh-vien/{sinh_vien_id}/khuon-mat")
 async def cap_nhat_khuon_mat(sinh_vien_id: int, anh: list[UploadFile] = File(...)):
-    vector, encrypted, confidence = await tao_template_tu_anh(anh)
+    vector, encrypted, confidence, _ = await tao_template_tu_anh(anh)
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -230,14 +413,22 @@ def diem_danh(payload: DiemDanhRequest):
             FROM face_vecs fv
             CROSS JOIN LATERAL (
                 SELECT id, ho_ten, vector_tho
-                FROM SinhVien
-                WHERE lop_id = (SELECT lop_id FROM CaHoc WHERE id = %s)
-                ORDER BY vector_tho <=> fv.vec
+                FROM SinhVien sv_inner
+                WHERE sv_inner.vector_tho IS NOT NULL
+                  AND (
+                    sv_inner.lop_id = (SELECT lop_id FROM CaHoc WHERE id = %s)
+                    OR EXISTS (
+                        SELECT 1 FROM LopHoc_SinhVien ls
+                        WHERE ls.sinh_vien_id = sv_inner.id
+                          AND ls.lop_id = (SELECT lop_id FROM CaHoc WHERE id = %s)
+                    )
+                  )
+                ORDER BY sv_inner.vector_tho <=> fv.vec
                 LIMIT 1
             ) sv
             ORDER BY fv.face_idx
             """,
-            (all_vectors, payload.ca_hoc_id),
+            (all_vectors, payload.ca_hoc_id, payload.ca_hoc_id),
         )
         #Trả về sớm, tránh query DB vô ích khi không có khuôn mặt nàos
         rows = cur.fetchall()
